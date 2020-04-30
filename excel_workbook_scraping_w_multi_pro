@@ -1,0 +1,2096 @@
+from __future__ import division
+import sys
+
+sys.path.insert(1, "G:\\code\\erusev\\flyingpandas\\")
+sys.path.insert(1, "G:\\code\\erusev\\flyingpandas\\flyingpandas\\")
+from multiprocessing import Pool
+import pandas as pd
+import numpy as np
+from collections import OrderedDict, abc
+import sys
+import time
+import itertools
+import os
+import sys
+import flyingpandas as fp
+from sqlalchemy import create_engine
+from flyingpandas.tools import check_unique_vals
+from pandas.lib import infer_dtype
+import datetime
+import matplotlib
+import matplotlib.pyplot as plt
+import gc
+from datetime import timedelta
+from collections import OrderedDict
+from datetime import timedelta as tdelta
+from matplotlib.backends.backend_pdf import PdfPages
+from multiprocessing import Pool
+from pathlib import Path
+from shutil import copyfile
+import os
+import ast
+from multiprocessing import Pool
+import os
+import time
+import re
+from pandas.lib import infer_dtype
+
+
+pd.set_option('display.max_rows', 500)
+pd.set_option('display.max_columns', 450)
+pd.set_option('display.width', 95)
+pd.options.display.float_format = '{:,.3f}'.format
+
+
+def now(msg):
+    t = datetime.datetime.now().strftime("%H:%M:%S")
+    print(t + ': ' + msg)
+
+rn_dict = {'Initial Sort Order': 'init_sort_order',
+           'Parent BPID': 'bpid',
+           'TIN': 'ccn_tin',
+           'Clinical Episode Type (IP/OP)': 'bundle_type',
+           'Clinical Episode Category Description': 'bundle',
+           'Stage 1 or Stage 2 Regression': 'reg_stage',
+           'Parameter': 'param',
+           'Parameter Description': 'param_desc',
+           'Variable Dropped (Y/N)': 'var_dropped',
+           'Parameter Estimates': 'param_est',
+           'Parameter Estimate': 'param_est',
+           'Episode Initiator BPID': 'bpid',
+           'CCN/TIN': 'ccn_tin',
+           'CCN': 'ccn_tin',
+           'Academic Medical Center': 'ac_med_cntr',
+           'Urban/Rural': 'urb_rur',
+           'Safety Net': 'safety_net',
+           'Bed Size': 'bed_size',
+           'Census Division': 'census_div',
+           'Episode Initiator-ACH Baseline Clinical Episode Count': 'bpid_trigger_ccn_base_epi_count',
+           'Preliminary Target Price in CY19/FY19 Real Dollars': 'target_price_real_dollars',
+           'ACH CCN Associated with Initiating Claim': 'trigger_ccn',
+           '> 40 Clinical Episodes Initiated by ACH in Baseline Period': 'trigger_ccn_base_count_gt40',
+           'Clinical Episode Count with Associated Patient Characteristic': 'patient_char_ep_count',
+           'Patient Level Covariates': 'patient_covars',
+           'PGP/ACH': 'pgp_ach',
+           'Baseline Year': 'baseline_year',
+           'Major Teaching Hospital': 'major_teaching_hospital',
+           'Urban': 'urban',
+           'PGP-ACH Baseline Clinical Episode Count': 'bpid_trigger_ccn_base_epi_count',
+           'ACH Baseline Clinical Episode Count': 'bpid_trigger_ccn_base_epi_count',
+           'Clinical Episode Spending (Observed Spending)': 'obs_epi_cost',
+           'Step 7 Average Observed Clinical Episode Spending': 'avg_obs_epi_cost',
+           'Step 8 ACH Historical Adjustment': 'ach_hist_adj',
+           'Step 9 SBS': 'sbs',
+           'MS-DRG/APC': 'ms_drg_apc',
+           'Step 10 Preliminary PCMA': 'pcma',
+           'Step 11 Peer Group Historical Adjustment': 'peer_group_hist_adj',
+           'Step 12 Peer Group Trend': 'peer_group_trend',
+           'Step 13 Preliminary HBP': 'hbp',
+           'Step 14 PGP Historical Adjustment': 'pgp_hist_adj',
+           'Step 15a PGP Offset w/o Adjustment': 'pgp_offset_no_adj',
+           'Step 15b w/ Adjustment': 'pgp_offset_w_adj',
+           'Step 16a PGP-ACH Preliminary PCMA': 'pgp_ach_prel_pcma',
+           'Step 16b Preliminary Relative Case Mix': 'rel_case_mix',
+           'Step 17 Preliminary PGP-ACH Benchmark Price': 'pgp_ach_bench_price',
+           'Step 18 Preliminary Target Price': 'target_price',
+           'Step 19 Preliminary Ratio of Real to Std Dollars': 'ratio_real_std_dollars',
+           'Average Observed Clinical Episode Spending': 'avg_obs_epi_cost',
+           'ACH Historical Adjustment': 'ach_hist_adj',
+           'SBS': 'sbs',
+           'Preliminary PCMA': 'pcma',
+           'Peer Group Historical Adjustment': 'peer_group_hist_adj',
+           'Peer Group Trend': 'peer_group_trend',
+           'Preliminary HBP': 'hbp',
+           'PGP Historical Adjustment': 'pgp_hist_adj',
+           'PGP Offset w/o Adjustment': 'pgp_offset_no_adj',
+           'PGP Offset w/ Adjustment': 'pgp_offset_w_adj',
+           'PGP-ACH Preliminary PCMA': 'pgp_ach_prel_pcma',
+           'Preliminary Relative Case Mix': 'rel_case_mix',
+           'Preliminary PGP-ACH Benchmark Price': 'pgp_ach_bench_price',
+           'Preliminary Target Price': 'target_price',
+           '1st Percentile of Clinical Episode Spending': '1st_pct1',
+           '99th Percentile of Clinical Episode Spending': '99th_pct1',
+           'Percentiles 1st': '1st_pctl',
+           'Percentiles 5th': '5th_pctl',
+           'Percentiles 10th': '10th_pctl',
+           'Percentiles 20th': '20th_pctl',
+           'Percentiles 25th': '25th_pctl',
+           'Percentiles 50th': '50th_pctl',
+           'Percentiles 75th': '75th_pctl',
+           'Percentiles 80th': '80th_pctl',
+           'Percentiles 90th': '90th_pctl',
+           'Percentiles 95th': '95th_pctl',
+           'Percentiles 99th': '99th_pctl',
+           'Clinical Episode Count': 'clin_epi_count',
+           'Service Type': 'service_type',
+           'Clinical Episode Period': 'clin_epi_period',
+           'Mean': 'mean',
+           'Standard Deviation': 'stdv',
+           'Min': 'min',
+           'Max': 'max',
+           'Initiating HCPCS': 'init_hcpcs',
+           'Initiating HCPCS Description': 'init_hcpcs_desc',
+           'APC': 'apc',
+           'Calendar Year': 'calendar_year',
+           'Fiscal Year': 'fiscal_year',
+           'Meets Case Min Threshold (Y/N)': 'meets_case_min_thres',
+           'Proxy APC Payment Rate': 'proxy_apc_payment_rate',
+           'IPPS Update Factor': 'ipps_update_factor',
+           'IPPS % of Total Non-Initiating Payment': 'ipps_pct_non_initiating_pmt',
+           'IRF Update Factor': 'irf_update_factor',
+           'IRF % of Total Non-Initiating Payment': 'irf_pct_non_initiating_pmt',
+           'SNF Update Factor': 'snf_update_factor',
+           'SNF % of Total Non-Initiating Payment': 'snf_pct_non_initiating_pmt',
+           'PFS Update Factor': 'pfs_update_factor',
+           'PFS % of Total Non-Initiating Payment': 'pfs_pct_non_initiating_pmt',
+           'HHA Update Factor': 'hha_update_factor',
+           'HHA % of Total Non-Initiating Payment': 'hha_pct_non_initiating_pmt',
+           'Other Update Factor': 'other_update_factor',
+           'Other % of Total Non-Initiating Payment': 'other_pct_non_initiating_pmt',
+           'Overall Update Factor': 'overall_update_factor',
+           'Total Potential Clinical Episode Count': 'total_epi',
+           'Final Clinical Episode Count #': 'final_epi',
+           'Final Clinical Episode Count %': 'final_epi_pct',
+           'Not FFS (Not A/B or C) #': 'not_ffs_epi',
+           'Not FFS (Not A/B or C) %': 'not_ffs_pct',
+           'End-Stage Renal Disease #': 'esrd_epi',
+           'End-Stage Renal Disease %': 'esrd_pct',
+           'Medicare Not Primary Payer #': 'medicare_not_prim_epi',
+           'Medicare Not Primary Payer %': 'medicare_not_prim_pct',
+           'Beneficiary Information Not Available #': 'no_bene_info_epi',
+           'Beneficiary Information Not Available %': 'no_bene_info_pct',
+           'Beneficiary Died During Anchor #': 'bene_died_in_anchor_epi',
+           'Beneficiary Died During Anchor %': 'bene_died_in_anchor_pct',
+           'Anchor Stay Length of Stay >59 Days #': 'anchor_grt_59_days_epi',
+           'Anchor Stay Length of Stay >59 Days %': 'anchor_grt_59_days_pct',
+           'Initiating OP Line is not Highest-Ranking J1 Line #': 'op_anchor_not_hightest_j1_epi',
+           'Initiating OP Line is not Highest-Ranking J1 Line %': 'op_anchor_not_hightest_j1_pct',
+           'Transfers to Excluded Hospitals #': 'transfers_to_excl_hosp_epi',
+           'Transfers to Excluded Hospitals %': 'transfers_to_excl_hosp_pct',
+           'Standardized Performance Period dollars after Winsorization':'std_dol_winz',
+           'Step 7 Dollar Amount':'dollar_amt',
+           'Step 8 ACH Efficiency Measure':'ach_eff',
+           'Step 13 PGP Efficiency Measure':'pgp_eff',
+           'Step 11 PAT Factor':'pat_factor',
+           'Step 12 Preliminary HBP':'prel_hbp',
+           'Step 14a PGP Offset w/o Adjustment':'pgp_offset_no_adj',
+           'Step 14b w/ Adjustment':'pgp_offset_w_adj',
+           'Step 15a PGP-ACH Preliminary PCMA':'pgp_ach_prel_pcma',
+           'Step 15b Preliminary Relative Case Mix':'rel_case_mix',
+           'Step 16 Preliminary PGP-ACH Benchmark Price':'pgp_ach_bench_price',
+           'Step 17 Preliminary Target Price':'target_price',
+           'Step 18 Preliminary Ratio of Real to Std Dollars':'ratio_real_std_dollars',
+           'Preliminary Target Price in CY19/FY20 Real Dollars':'target_price_real_dollars',
+           'Parameter Type':'param_type',
+           'Parameter Used in TP Construction':'param_in_tp_construct'}
+
+#layout_0: pgp_nonconvener
+#layout_1: ach_nonconvener
+#layout_2: convener
+
+config = {'tp_sum':
+              {'layout_0':
+                   {'sheet': 'TP_Summary',
+                    'skip': 4,
+                    'header_rows': 0,
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Parent BPID'],
+                                 2: ['TIN'],
+                                 3: ['ACH CCN Associated with Initiating Claim'],
+                                 4: ['Clinical Episode Type (IP/OP)'],
+                                 5: ['Clinical Episode Category Description'],
+                                 6: ['PGP-ACH Baseline Clinical Episode Count'],
+                                 7: ['> 40 Clinical Episodes Initiated by ACH in Baseline Period'],
+                                 8: ['Preliminary Target Price in CY19/FY20 Real Dollars']},
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                 rn_dict['PGP-ACH Baseline Clinical Episode Count'],
+                                 rn_dict['Preliminary Target Price in CY19/FY20 Real Dollars']],
+                    'percent_cols': [],
+                    'maxcols': 8},
+               'layout_1':
+                   {'sheet': 'TP_Summary',
+                    'skip': 4,
+                    'header_rows': 0,
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Parent BPID'],
+                                 2: ['CCN'],
+                                 3: ['Clinical Episode Category'],
+                                 4: ['ACH Baseline Clinical Episode Count'],
+                                 5: ['> 40 Clinical Episodes Initiated by ACH in Baseline Period'],
+                                 6: ['Preliminary Target Price in CY19/FY20 Real Dollars']},
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                 rn_dict['ACH Baseline Clinical Episode Count'],
+                                 rn_dict['Preliminary Target Price in CY19/FY20 Real Dollars']],
+                    'percent_cols': [],
+                    'maxcols': 6},
+               'layout_2':
+                   {'sheet': 'TP_Summary',
+                    'skip': 4,
+                    'header_rows': 0,
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Episode Initiator BPID'],
+                                 2: ['PGP/ACH'],
+                                 3: ['CCN/TIN'],
+                                 4: ['ACH CCN Associated with Initiating Claim'],
+                                 5: ['Clinical Episode Type (IP/OP)'],
+                                 6: ['Clinical Episode Category Description'],
+                                 7: ['Episode Initiator-ACH Baseline Clinical Episode Count'],
+                                 8: ['> 40 Clinical Episodes Initiated by ACH in Baseline Period'],
+                                 9: ['Preliminary Target Price in CY19/FY20 Real Dollars']},
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                 rn_dict['Episode Initiator-ACH Baseline Clinical Episode Count'],
+                                 rn_dict['Preliminary Target Price in CY19/FY20 Real Dollars']],
+                    'percent_cols': [],
+                    'maxcols': 9}},
+          'nat_tp_sum':
+              {'layout_3':
+                   {'sheet': 'Nat_ACH_TP_Summary',
+                    'skip': 3,
+                    'header_rows': 0,
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['CCN'],
+                                 2: ['Clinical Episode Type (IP/OP)'],
+                                 3: ['Clinical Episode Category Description'],
+                                 4: ['ACH Baseline Clinical Episode Count'],
+                                 5: ['> 40 Clinical Episodes Initiated by ACH in Baseline Period'],
+                                 6: ['Preliminary Target Price in CY19/FY20 Real Dollars']},
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                 rn_dict['ACH Baseline Clinical Episode Count'],
+                                 rn_dict['Preliminary Target Price in CY19/FY20 Real Dollars']],
+                    'percent_cols': [],
+                    'maxcols': 6}},
+          'tp_comp':
+              {'layout_0':
+                   {'sheet': 'TP_Components',
+                    'skip': 8,
+                    'header_rows': [0, 1, 2],
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Parent BPID'],
+                                 2: ['TIN'],
+                                 3: ['ACH CCN Associated with Initiating Claim'],
+                                 4: ['Clinical Episode Type (IP/OP)'],
+                                 5: ['Clinical Episode Category Description'],
+                                 6: ['PGP-ACH Baseline Clinical Episode Count'],
+                                 7: ['> 40 Clinical Episodes Initiated by ACH in Baseline Period'],
+                                 8: ['Standardized Performance Period dollars after Winsorization'],
+                                 9: ['Step 7 Dollar Amount'],
+                                 10: ['Step 8 ACH Efficiency Measure'],
+                                 11: ['Step 9 SBS'],
+                                 12: ['Step 10 Preliminary PCMA'],
+                                 13: ['Step 11 PAT Factor'],
+                                 14: ['Step 12 Preliminary HBP'],
+                                 15: ['Step 13 PGP Efficiency Measure'],
+                                 16: ['Step 14a PGP Offset w/o Adjustment'],
+                                 17: ['Step 14b w/ Adjustment'],
+                                 18: ['Step 15a PGP-ACH Preliminary PCMA'],
+                                 19: ['Step 15b Preliminary Relative Case Mix'],
+                                 20: ['Step 16 Preliminary PGP-ACH Benchmark Price'],
+                                 21: ['Step 17 Preliminary Target Price'],
+                                 22: ['Step 18 Preliminary Ratio of Real to Std Dollars'],
+                                 23: ['Preliminary Target Price in CY19/FY20 Real Dollars']},
+
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                 rn_dict['PGP-ACH Baseline Clinical Episode Count'],
+                                 rn_dict['Standardized Performance Period dollars after Winsorization'],
+                                 rn_dict['Step 7 Dollar Amount'],
+                                 rn_dict['Step 8 ACH Efficiency Measure'],
+                                 rn_dict['Step 9 SBS'],
+                                 rn_dict['Step 10 Preliminary PCMA'],
+                                 rn_dict['Step 11 PAT Factor'],
+                                 rn_dict['Step 12 Preliminary HBP'],
+                                 rn_dict['Step 13 PGP Efficiency Measure'],
+                                 rn_dict['Step 14a PGP Offset w/o Adjustment'],
+                                 rn_dict['Step 14b w/ Adjustment'],
+                                 rn_dict['Step 15a PGP-ACH Preliminary PCMA'],
+                                 rn_dict['Step 15b Preliminary Relative Case Mix'],
+                                 rn_dict['Step 16 Preliminary PGP-ACH Benchmark Price'],
+                                 rn_dict['Step 17 Preliminary Target Price'],
+                                 rn_dict['Step 18 Preliminary Ratio of Real to Std Dollars'],
+                                 rn_dict['Preliminary Target Price in CY19/FY20 Real Dollars']],
+                    'percent_cols': [],
+                    'maxcols': 23},
+               'layout_1':
+                   {'sheet': 'TP_Components',
+                    'skip': 8,
+                    'header_rows': [0, 1],
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Parent BPID'],
+                                 2: ['CCN'],
+                                 3: ['Clinical Episode Category'],
+                                 4: ['ACH Baseline Clinical Episode Count'],
+                                 5: ['> 40 Clinical Episodes Initiated by ACH in Baseline Period'],
+                                 6: ['Clinical Episode Spending (Observed Spending)'],
+                                 7: ['Step 7 Average Observed Clinical Episode Spending'],
+                                 8: ['Step 8 ACH Historical Adjustment'],
+                                 9: ['Step 9 SBS'],
+                                 10: ['Step 10 Preliminary PCMA'],
+                                 11: ['Step 11 Peer Group Historical Adjustment'],
+                                 12: ['Step 12 Peer Group Trend'],
+                                 13: ['Step 13 Preliminary HBP'],
+                                 14: ['Step 18 Preliminary Target Price'],
+                                 15: ['Step 19 Preliminary Ratio of Real to Std Dollars'],
+                                 16: ['Preliminary Target Price in CY19/FY20 Real Dollars']},
+
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                 rn_dict['ACH Baseline Clinical Episode Count'],
+                                 rn_dict['Clinical Episode Spending (Observed Spending)'],
+                                 rn_dict['Step 7 Average Observed Clinical Episode Spending'],
+                                 rn_dict['Step 8 ACH Historical Adjustment'],
+                                 rn_dict['Step 9 SBS'],
+                                 rn_dict['Step 10 Preliminary PCMA'],
+                                 rn_dict['Step 11 Peer Group Historical Adjustment'],
+                                 rn_dict['Step 12 Peer Group Trend'],
+                                 rn_dict['Step 13 Preliminary HBP'],
+                                 rn_dict['Step 18 Preliminary Target Price'],
+                                 rn_dict['Step 19 Preliminary Ratio of Real to Std Dollars'],
+                                 rn_dict['Preliminary Target Price in CY19/FY20 Real Dollars']],
+                    'percent_cols': [],
+                    'maxcols': 16},
+               'layout_2':
+                   {'sheet': 'TP_Components',
+                    'skip': 8,
+                    'header_rows': [0, 1, 2],
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Episode Initiator BPID'],
+                                 2: ['PGP/ACH'],
+                                 3: ['CCN/TIN'],
+                                 4: ['ACH CCN Associated with Initiating Claim'],
+                                 5: ['Clinical Episode Type (IP/OP)'],
+                                 6: ['Clinical Episode Category Description'],
+                                 7: ['Episode Initiator-ACH Baseline Clinical Episode Count'],
+                                 8: ['> 40 Clinical Episodes Initiated by ACH in Baseline Period'],
+                                 9: ['Standardized Performance Period dollars after Winsorization'],
+                                 10: ['Step 7 Dollar Amount'],
+                                 11: ['Step 8 ACH Efficiency Measure'],
+                                 12: ['Step 9 SBS'],
+                                 13: ['Step 10 Preliminary PCMA'],
+                                 14: ['Step 11 PAT Factor'],
+                                 15: ['Step 12 Preliminary HBP'],
+                                 16: ['Step 13 PGP Efficiency Measure'],
+                                 17: ['Step 14a PGP Offset w/o Adjustment'],
+                                 18: ['Step 14b w/ Adjustment'],
+                                 19: ['Step 15a PGP-ACH Preliminary PCMA'],
+                                 20: ['Step 15b Preliminary Relative Case Mix'],
+                                 21: ['Step 16 Preliminary PGP-ACH Benchmark Price'],
+                                 22: ['Step 17 Preliminary Target Price'],
+                                 23: ['Step 18 Preliminary Ratio of Real to Std Dollars'],
+                                 24: ['Preliminary Target Price in CY19/FY20 Real Dollars']},
+
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                 rn_dict['PGP-ACH Baseline Clinical Episode Count'],
+                                 rn_dict['Standardized Performance Period dollars after Winsorization'],
+                                 rn_dict['Step 7 Dollar Amount'],
+                                 rn_dict['Step 8 ACH Efficiency Measure'],
+                                 rn_dict['Step 9 SBS'],
+                                 rn_dict['Step 10 Preliminary PCMA'],
+                                 rn_dict['Step 11 PAT Factor'],
+                                 rn_dict['Step 12 Preliminary HBP'],
+                                 rn_dict['Step 13 PGP Efficiency Measure'],
+                                 rn_dict['Step 14a PGP Offset w/o Adjustment'],
+                                 rn_dict['Step 14b w/ Adjustment'],
+                                 rn_dict['Step 15a PGP-ACH Preliminary PCMA'],
+                                 rn_dict['Step 15b Preliminary Relative Case Mix'],
+                                 rn_dict['Step 16 Preliminary PGP-ACH Benchmark Price'],
+                                 rn_dict['Step 17 Preliminary Target Price'],
+                                 rn_dict['Step 18 Preliminary Ratio of Real to Std Dollars'],
+                                 rn_dict['Preliminary Target Price in CY19/FY20 Real Dollars']],
+                    'percent_cols': [],
+                    'maxcols': 24}},
+          'nat_tp_comp':
+            {'layout_3':
+                   {'sheet': 'Nat_ACH_TP_Components',
+                    'skip': 7,
+                    'header_rows': [0,2],
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['CCN'],
+                                 2: ['Clinical Episode Type (IP/OP)'],
+                                 3: ['Clinical Episode Category Description'],
+                                 4: ['ACH Baseline Clinical Episode Count'],
+                                 5: ['> 40 Clinical Episodes Initiated by ACH in Baseline Period'],
+                                 6: ['Standardized Performance Period dollars after Winsorization'],
+                                 7: ['Step 7 Dollar Amount'],
+                                 8: ['Step 8 ACH Efficiency Measure'],
+                                 9: ['Step 9 SBS'],
+                                 10: ['Step 10 Preliminary PCMA'],
+                                 11: ['Step 11 PAT Factor'],
+                                 12: ['Step 12 Preliminary HBP'],
+                                 13: ['Step 17 Preliminary Target Price'],
+                                 14: ['Step 18 Preliminary Ratio of Real to Std Dollars'],
+                                 15: ['Preliminary Target Price in CY19/FY20 Real Dollars']},
+
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                rn_dict['ACH Baseline Clinical Episode Count'],
+                                rn_dict['Standardized Performance Period dollars after Winsorization'],
+                                rn_dict['Step 7 Dollar Amount'],
+                                rn_dict['Step 8 ACH Efficiency Measure'],
+                                rn_dict['Step 9 SBS'],
+                                rn_dict['Step 10 Preliminary PCMA'],
+                                 rn_dict['Step 11 PAT Factor'],
+                                 rn_dict['Step 12 Preliminary HBP'],
+                                 rn_dict['Step 17 Preliminary Target Price'],
+                                 rn_dict['Step 18 Preliminary Ratio of Real to Std Dollars'],
+                                 rn_dict['Preliminary Target Price in CY19/FY20 Real Dollars']],
+                    'percent_cols': [],
+                    'maxcols': 15}},
+          'risk_param':
+              {'layout_0':
+                   {'sheet': 'Risk_Adjustment_Parameters',
+                    'skip': 4,
+                    'header_rows': 0,
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Clinical Episode Type (IP/OP)'],
+                                 2: ['Clinical Episode Category Description'],
+                                 3: ['Stage 1 or Stage 2 Regression'],
+                                 4: ['Parameter'],
+                                 5: ['Parameter Description'],
+                                 6: ['Parameter Estimate']},
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                 rn_dict['Parameter Estimate']],
+                    'percent_cols': [],
+                    'maxcols': 6},
+               'layout_1':
+                   {'sheet': 'Risk_Adjustment_Parameters',
+                    'skip': 4,
+                    'header_rows': 0,
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Clinical Episode Category'],
+                                 2: ['Stage 1 or Stage 2 Regression'],
+                                 3: ['Parameter'],
+                                 4: ['Parameter Description'],
+                                 5: ['Parameter Estimate']},
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                 rn_dict['Parameter Estimate']],
+                    'percent_cols': [],
+                    'maxcols': 5},
+               'layout_2':
+                   {'sheet': 'Risk_Adjustment_Parameters',
+                    'skip': 4,
+                    'header_rows': 0,
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Clinical Episode Type (IP/OP)'],
+                                 2: ['Clinical Episode Category Description'],
+                                 3: ['Stage 1 or Stage 2 Regression'],
+                                 4: ['Parameter'],
+                                 5: ['Parameter Description'],
+                                 6: ['Parameter Estimate']},
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                 rn_dict['Parameter Estimate']],
+                    'percent_cols': [],
+                    'maxcols': 6},
+               'layout_3':
+                   {'sheet': 'Risk_Adjustment_Parameters',
+                    'skip': 3,
+                    'header_rows': 0,
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Clinical Episode Type (IP/OP)'],
+                                 2: ['Clinical Episode Category Description'],
+                                 3: ['Stage 1 or Stage 2 Regression'],
+                                 4: ['Parameter Type'],
+                                 5: ['Parameter'],
+                                 6: ['Parameter Description'],
+                                 7: ['Parameter Estimate'],
+                                 8: ['Parameter Used in TP Construction']},
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                 rn_dict['Parameter Estimate']],
+                    'percent_cols': [],
+                    'maxcols': 8}},
+          'peer_group':
+              {'layout_0':
+                   {'sheet':'Peer_Group_Characteristics',
+                    'skip':4,
+                    'header_rows':0,
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Parent BPID'],
+                                 2: ['CCN'],
+                                 3: ['Academic Medical Center'],
+                                 4: ['Urban/Rural'],
+                                 5: ['Safety Net'],
+                                 6: ['Bed Size'],
+                                 7: ['Census Division']},
+                    'num_cols': [rn_dict['Initial Sort Order']],
+                    'percent_cols': [],
+                    'maxcols': 7},
+               'layout_2':
+                    {'sheet': 'Peer_Group_Characteristics',
+                    'skip':4,
+                    'header_rows':0,
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Episode Initiator BPID'],
+                                 2: ['CCN'],
+                                 3: ['Academic Medical Center'],
+                                 4: ['Urban/Rural'],
+                                 5: ['Safety Net'],
+                                 6: ['Bed Size'],
+                                 7: ['Census Division']},
+                    'num_cols': [rn_dict['Initial Sort Order']],
+                    'percent_cols': [],
+                    'maxcols': 7},
+               'layout_3':
+                    {'sheet': 'Peer_Group_Characteristics',
+                     'skip': 4,
+                     'header_rows': 0,
+                     'cms_cols': {0: ['Initial Sort Order'],
+                                  1: ['CCN'],
+                                  2: ['Clinical Episode Category'],
+                                  3: ['Major Teaching Hospital'],
+                                  4: ['Urban'],
+                                  5: ['Safety Net'],
+                                  6: ['Bed Size'],
+                                  7: ['Census Division']},
+                     'num_cols': [rn_dict['Initial Sort Order']],
+                     'percent_cols': [],
+                     'maxcols': 7}},
+          'patient_chars':
+              {'layout_0':
+                   {'sheet': 'Patient_Level_Characteristics',
+                    'skip': 4,
+                    'header_rows': 0,
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Parent BPID'],
+                                 2: ['TIN'],
+                                 3: ['ACH CCN Associated with Initiating Claim'],
+                                 4: ['Clinical Episode Category'],
+                                 5: ['Parameter'],
+                                 6: ['Parameter Description'],
+                                 7: ['PGP-ACH Baseline Clinical Episode Count'],
+                                 8: ['Clinical Episode Count with Associated Patient Characteristic']},
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                 rn_dict['PGP-ACH Baseline Clinical Episode Count'],
+                                 rn_dict['Clinical Episode Count with Associated Patient Characteristic']],
+                    'percent_cols': [],
+                    'maxcols': 8},
+               'layout_1':
+                   {'sheet': 'Patient_Level_Characteristics',
+                    'skip': 4,
+                    'header_rows': 0,
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Parent BPID'],
+                                 2: ['CCN'],
+                                 3: ['Clinical Episode Category'],
+                                 4: ['Parameter'],
+                                 5: ['Parameter Description'],
+                                 6: ['ACH Baseline Clinical Episode Count'],
+                                 7: ['Clinical Episode Count with Associated Patient Characteristic']},
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                 rn_dict['ACH Baseline Clinical Episode Count'],
+                                 rn_dict['Clinical Episode Count with Associated Patient Characteristic']],
+                    'percent_cols': [],
+                    'maxcols': 7},
+               'layout_2':
+                   {'sheet': 'Patient_Level_Characteristics',
+                    'skip': 4,
+                    'header_rows': 0,
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Episode Initiator BPID'],
+                                 2: ['PGP/ACH'],
+                                 3: ['CCN/TIN'],
+                                 4: ['ACH CCN Associated with Initiating Claim'],
+                                 5: ['Clinical Episode Category'],
+                                 6: ['Parameter'],
+                                 7: ['Parameter Description'],
+                                 8: ['Episode Initiator-ACH Baseline Clinical Episode Count'],
+                                 9: ['Clinical Episode Count with Associated Patient Characteristic']},
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                 rn_dict['Episode Initiator-ACH Baseline Clinical Episode Count'],
+                                 rn_dict['Clinical Episode Count with Associated Patient Characteristic']],
+                    'percent_cols': [],
+                    'maxcols': 9}},
+          'wins_val':
+              {'layout_0':
+                   {'sheet': 'Winsor_Values_Baseline',
+                    'skip': 5,
+                    'header_rows': 0,
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Clinical Episode Type (IP/OP)'],
+                                 2: ['Clinical Episode Category Description'],
+                                 3: ['MS-DRG/APC'],
+                                 4: ['Baseline Year'],
+                                 5: ['1st Percentile of Clinical Episode Spending'],
+                                 6: ['99th Percentile of Clinical Episode Spending']},
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                 rn_dict['1st Percentile of Clinical Episode Spending'],
+                                 rn_dict['99th Percentile of Clinical Episode Spending']],
+                    'percent_cols': [],
+                    'maxcols': 6},
+               'layout_1':
+                   {'sheet': 'Winsor_Values_Baseline',
+                    'skip': 5,
+                    'header_rows': 0,
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Clinical Episode Category'],
+                                 2: ['MS-DRG/APC'],
+                                 3: ['Fiscal Year'],
+                                 4: ['1st Percentile of Clinical Episode Spending'],
+                                 5: ['99th Percentile of Clinical Episode Spending']},
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                 rn_dict['1st Percentile of Clinical Episode Spending'],
+                                 rn_dict['99th Percentile of Clinical Episode Spending']],
+                    'percent_cols': [],
+                    'maxcols': 5},
+               'layout_2':
+                   {'sheet': 'Winsor_Values_Baseline',
+                    'skip': 5,
+                    'header_rows': 0,
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Clinical Episode Type (IP/OP)'],
+                                 2: ['Clinical Episode Category Description'],
+                                 3: ['MS-DRG/APC'],
+                                 4: ['Baseline Year'],
+                                 5: ['1st Percentile of Clinical Episode Spending'],
+                                 6: ['99th Percentile of Clinical Episode Spending']},
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                 rn_dict['1st Percentile of Clinical Episode Spending'],
+                                 rn_dict['99th Percentile of Clinical Episode Spending']],
+                    'percent_cols': [],
+                    'maxcols': 6},
+               'layout_3':
+                   {'sheet': 'Winsor_Values_Baseline',
+                    'skip': 5,
+                    'header_rows': 0,
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Clinical Episode Category'],
+                                 2: ['MS-DRG/APC'],
+                                 3: ['Fiscal Year'],
+                                 4: ['1st Percentile of Clinical Episode Spending'],
+                                 5: ['99th Percentile of Clinical Episode Spending']},
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                 rn_dict['1st Percentile of Clinical Episode Spending'],
+                                 rn_dict['99th Percentile of Clinical Episode Spending']],
+                    'percent_cols': [],
+                    'maxcols': 5}},
+          'ep_spending':
+              {'layout_0':
+                   {'sheet': 'Clinical_Episode_Spending',
+                    'skip': 5,
+                    'header_rows': [0, 1],
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Parent BPID'],
+                                 2: ['TIN'],
+                                 3: ['ACH CCN Associated with Initiating Claim'],
+                                 4: ['Clinical Episode Category'],
+                                 5: ['Service Type'],
+                                 6: ['Clinical Episode Period'],
+                                 7: ['Clinical Episode Count'],
+                                 8: ['Mean'],
+                                 9: ['Standard Deviation'],
+                                 10: ['Min'],
+                                 11: ['Percentiles 1st'],
+                                 12: ['Percentiles 5th'],
+                                 13: ['Percentiles 10th'],
+                                 14: ['Percentiles 20th'],
+                                 15: ['Percentiles 25th'],
+                                 16: ['Percentiles 50th'],
+                                 17: ['Percentiles 75th'],
+                                 18: ['Percentiles 80th'],
+                                 19: ['Percentiles 90th'],
+                                 20: ['Percentiles 95th'],
+                                 21: ['Percentiles 99th'],
+                                 22: ['Max']},
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                 rn_dict['Clinical Episode Count'],
+                                 rn_dict['Mean'],
+                                 rn_dict['Standard Deviation'],
+                                 rn_dict['Min'],
+                                 rn_dict['Percentiles 1st'],
+                                 rn_dict['Percentiles 5th'],
+                                 rn_dict['Percentiles 10th'],
+                                 rn_dict['Percentiles 20th'],
+                                 rn_dict['Percentiles 25th'],
+                                 rn_dict['Percentiles 50th'],
+                                 rn_dict['Percentiles 75th'],
+                                 rn_dict['Percentiles 80th'],
+                                 rn_dict['Percentiles 90th'],
+                                 rn_dict['Percentiles 95th'],
+                                 rn_dict['Percentiles 99th'],
+                                 rn_dict['Max']],
+                    'percent_cols': [],
+                    'maxcols': 22},
+               'layout_1':
+                   {'sheet': 'Clinical_Episode_Spending',
+                    'skip': 5,
+                    'header_rows': [0, 1],
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Parent BPID'],
+                                 2: ['CCN'],
+                                 3: ['Clinical Episode Category'],
+                                 4: ['Service Type'],
+                                 5: ['Clinical Episode Period'],
+                                 6: ['Clinical Episode Count'],
+                                 7: ['Mean'],
+                                 8: ['Standard Deviation'],
+                                 9: ['Min'],
+                                 10: ['Percentiles 1st'],
+                                 11: ['Percentiles 5th'],
+                                 12: ['Percentiles 10th'],
+                                 13: ['Percentiles 20th'],
+                                 14: ['Percentiles 25th'],
+                                 15: ['Percentiles 50th'],
+                                 16: ['Percentiles 75th'],
+                                 17: ['Percentiles 80th'],
+                                 18: ['Percentiles 90th'],
+                                 19: ['Percentiles 95th'],
+                                 20: ['Percentiles 99th'],
+                                 21: ['Max']},
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                 rn_dict['Clinical Episode Count'],
+                                 rn_dict['Mean'],
+                                 rn_dict['Standard Deviation'],
+                                 rn_dict['Min'],
+                                 rn_dict['Percentiles 1st'],
+                                 rn_dict['Percentiles 5th'],
+                                 rn_dict['Percentiles 10th'],
+                                 rn_dict['Percentiles 20th'],
+                                 rn_dict['Percentiles 25th'],
+                                 rn_dict['Percentiles 50th'],
+                                 rn_dict['Percentiles 75th'],
+                                 rn_dict['Percentiles 80th'],
+                                 rn_dict['Percentiles 90th'],
+                                 rn_dict['Percentiles 95th'],
+                                 rn_dict['Percentiles 99th'],
+                                 rn_dict['Max']],
+                    'percent_cols': [],
+                    'maxcols': 21},
+               'layout_2':
+                   {'sheet': 'Clinical_Episode_Spending',
+                    'skip': 5,
+                    'header_rows': [0, 1],
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Episode Initiator BPID'],
+                                 2: ['PGP/ACH'],
+                                 3: ['CCN/TIN'],
+                                 4: ['ACH CCN Associated with Initiating Claim'],
+                                 5: ['Clinical Episode Category'],
+                                 6: ['Service Type'],
+                                 7: ['Clinical Episode Period'],
+                                 8: ['Clinical Episode Count'],
+                                 9: ['Mean'],
+                                 10: ['Standard Deviation'],
+                                 11: ['Min'],
+                                 12: ['Percentiles 1st'],
+                                 13: ['Percentiles 5th'],
+                                 14: ['Percentiles 10th'],
+                                 15: ['Percentiles 20th'],
+                                 16: ['Percentiles 25th'],
+                                 17: ['Percentiles 50th'],
+                                 18: ['Percentiles 75th'],
+                                 19: ['Percentiles 80th'],
+                                 20: ['Percentiles 90th'],
+                                 21: ['Percentiles 95th'],
+                                 22: ['Percentiles 99th'],
+                                 23: ['Max']},
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                 rn_dict['Clinical Episode Count'],
+                                 rn_dict['Mean'],
+                                 rn_dict['Standard Deviation'],
+                                 rn_dict['Min'],
+                                 rn_dict['Percentiles 1st'],
+                                 rn_dict['Percentiles 5th'],
+                                 rn_dict['Percentiles 10th'],
+                                 rn_dict['Percentiles 20th'],
+                                 rn_dict['Percentiles 25th'],
+                                 rn_dict['Percentiles 50th'],
+                                 rn_dict['Percentiles 75th'],
+                                 rn_dict['Percentiles 80th'],
+                                 rn_dict['Percentiles 90th'],
+                                 rn_dict['Percentiles 95th'],
+                                 rn_dict['Percentiles 99th'],
+                                 rn_dict['Max']],
+                    'percent_cols': [],
+                    'maxcols': 23}},
+          'proxy_apc':
+              {'layout_0':
+                   {'sheet': 'Proxy_APC_Rate',
+                    'skip': 5,
+                    'header_rows': 0,
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Initiating HCPCS'],
+                                 2: ['Initiating HCPCS Description'],
+                                 3: ['APC'],
+                                 4: ['Baseline Year'],
+                                 5: ['Proxy APC Payment Rate']},
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                 rn_dict['Proxy APC Payment Rate']],
+                    'percent_cols': [],
+                    'maxcols': 5},
+               'layout_1':
+                   {'sheet': 'Proxy_APC_Rate',
+                    'skip': 5,
+                    'header_rows': 0,
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Initiating HCPCS'],
+                                 2: ['Initiating HCPCS Description'],
+                                 3: ['APC'],
+                                 4: ['Calendar Year'],
+                                 5: ['Proxy APC Payment Rate']},
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                 rn_dict['Proxy APC Payment Rate']],
+                    'percent_cols': [],
+                    'maxcols': 5},
+               'layout_2':
+                   {'sheet': 'Proxy_APC_Rate',
+                    'skip': 5,
+                    'header_rows': 0,
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Initiating HCPCS'],
+                                 2: ['Initiating HCPCS Description'],
+                                 3: ['APC'],
+                                 4: ['Baseline Year'],
+                                 5: ['Proxy APC Payment Rate']},
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                 rn_dict['Proxy APC Payment Rate']],
+                    'percent_cols': [],
+                    'maxcols': 5}},
+          'update_factors':
+              {'layout_0':
+                   {'sheet': 'Setting_Specific_Update_Factors',
+                    'skip': 5,
+                    'header_rows': [0, 1],
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Parent BPID'],
+                                 2: ['ACH CCN Associated with Initiating Claim'],
+                                 3: ['Baseline Year'],
+                                 4: ['IPPS Update Factor'],
+                                 5: ['IPPS % of Total Non-Initiating Payment'],
+                                 6: ['IRF Update Factor'],
+                                 7: ['IRF % of Total Non-Initiating Payment'],
+                                 8: ['SNF Update Factor'],
+                                 9: ['SNF % of Total Non-Initiating Payment'],
+                                 10: ['PFS Update Factor'],
+                                 11: ['PFS % of Total Non-Initiating Payment'],
+                                 12: ['HHA Update Factor'],
+                                 13: ['HHA % of Total Non-Initiating Payment'],
+                                 14: ['Other Update Factor'],
+                                 15: ['Other % of Total Non-Initiating Payment'],
+                                 16: ['Overall Update Factor']},
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                 rn_dict['IPPS Update Factor'],
+                                 rn_dict['IPPS % of Total Non-Initiating Payment'],
+                                 rn_dict['IRF Update Factor'],
+                                 rn_dict['IRF % of Total Non-Initiating Payment'],
+                                 rn_dict['SNF Update Factor'],
+                                 rn_dict['SNF % of Total Non-Initiating Payment'],
+                                 rn_dict['PFS Update Factor'],
+                                 rn_dict['PFS % of Total Non-Initiating Payment'],
+                                 rn_dict['HHA Update Factor'],
+                                 rn_dict['HHA % of Total Non-Initiating Payment'],
+                                 rn_dict['Other Update Factor'],
+                                 rn_dict['Other % of Total Non-Initiating Payment'],
+                                 rn_dict['Overall Update Factor']],
+                    'percent_cols': [rn_dict['IPPS % of Total Non-Initiating Payment'],
+                                     rn_dict['IRF % of Total Non-Initiating Payment'],
+                                     rn_dict['SNF % of Total Non-Initiating Payment'],
+                                     rn_dict['PFS % of Total Non-Initiating Payment'],
+                                     rn_dict['HHA % of Total Non-Initiating Payment'],
+                                     rn_dict['Other % of Total Non-Initiating Payment']],
+                    'maxcols': 16},
+               'layout_1':
+                   {'sheet': 'Setting_Specific_Update_Factors',
+                    'skip': 5,
+                    'header_rows': [0, 1],
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Parent BPID'],
+                                 2: ['CCN'],
+                                 3: ['Clinical Episode Category'],
+                                 4: ['Fiscal Year'],
+                                 5: ['IPPS Update Factor'],
+                                 6: ['IPPS % of Total Non-Initiating Payment'],
+                                 7: ['IRF Update Factor'],
+                                 8: ['IRF % of Total Non-Initiating Payment'],
+                                 9: ['SNF Update Factor'],
+                                 10: ['SNF % of Total Non-Initiating Payment'],
+                                 11: ['PFS Update Factor'],
+                                 12: ['PFS % of Total Non-Initiating Payment'],
+                                 13: ['HHA Update Factor'],
+                                 14: ['HHA % of Total Non-Initiating Payment'],
+                                 15: ['Other Update Factor'],
+                                 16: ['Other % of Total Non-Initiating Payment'],
+                                 17: ['Overall Update Factor']},
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                 rn_dict['IPPS Update Factor'],
+                                 rn_dict['IPPS % of Total Non-Initiating Payment'],
+                                 rn_dict['IRF Update Factor'],
+                                 rn_dict['IRF % of Total Non-Initiating Payment'],
+                                 rn_dict['SNF Update Factor'],
+                                 rn_dict['SNF % of Total Non-Initiating Payment'],
+                                 rn_dict['PFS Update Factor'],
+                                 rn_dict['PFS % of Total Non-Initiating Payment'],
+                                 rn_dict['HHA Update Factor'],
+                                 rn_dict['HHA % of Total Non-Initiating Payment'],
+                                 rn_dict['Other Update Factor'],
+                                 rn_dict['Other % of Total Non-Initiating Payment'],
+                                 rn_dict['Overall Update Factor']],
+                    'percent_cols': [rn_dict['IPPS % of Total Non-Initiating Payment'],
+                                     rn_dict['IRF % of Total Non-Initiating Payment'],
+                                     rn_dict['SNF % of Total Non-Initiating Payment'],
+                                     rn_dict['PFS % of Total Non-Initiating Payment'],
+                                     rn_dict['HHA % of Total Non-Initiating Payment'],
+                                     rn_dict['Other % of Total Non-Initiating Payment']],
+                    'maxcols': 17},
+               'layout_2':
+                   {'sheet': 'Setting_Specific_Update_Factors',
+                    'skip': 5,
+                    'header_rows': [0, 1],
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Episode Initiator BPID'],
+                                 2: ['CCN'],
+                                 3: ['Baseline Year'],
+                                 4: ['IPPS Update Factor'],
+                                 5: ['IPPS % of Total Non-Initiating Payment'],
+                                 6: ['IRF Update Factor'],
+                                 7: ['IRF % of Total Non-Initiating Payment'],
+                                 8: ['SNF Update Factor'],
+                                 9: ['SNF % of Total Non-Initiating Payment'],
+                                 10: ['PFS Update Factor'],
+                                 11: ['PFS % of Total Non-Initiating Payment'],
+                                 12: ['HHA Update Factor'],
+                                 13: ['HHA % of Total Non-Initiating Payment'],
+                                 14: ['Other Update Factor'],
+                                 15: ['Other % of Total Non-Initiating Payment'],
+                                 16: ['Overall Update Factor']},
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                 rn_dict['IPPS Update Factor'],
+                                 rn_dict['IPPS % of Total Non-Initiating Payment'],
+                                 rn_dict['IRF Update Factor'],
+                                 rn_dict['IRF % of Total Non-Initiating Payment'],
+                                 rn_dict['SNF Update Factor'],
+                                 rn_dict['SNF % of Total Non-Initiating Payment'],
+                                 rn_dict['PFS Update Factor'],
+                                 rn_dict['PFS % of Total Non-Initiating Payment'],
+                                 rn_dict['HHA Update Factor'],
+                                 rn_dict['HHA % of Total Non-Initiating Payment'],
+                                 rn_dict['Other Update Factor'],
+                                 rn_dict['Other % of Total Non-Initiating Payment'],
+                                 rn_dict['Overall Update Factor']],
+                    'percent_cols': [rn_dict['IPPS % of Total Non-Initiating Payment'],
+                                     rn_dict['IRF % of Total Non-Initiating Payment'],
+                                     rn_dict['SNF % of Total Non-Initiating Payment'],
+                                     rn_dict['PFS % of Total Non-Initiating Payment'],
+                                     rn_dict['HHA % of Total Non-Initiating Payment'],
+                                     rn_dict['Other % of Total Non-Initiating Payment']],
+                    'maxcols': 16}},
+          'exclusions':
+              {'layout_0':
+                   {'sheet': 'Clinical_Episode_Exclusions',
+                    'skip': 5,
+                    'header_rows': [0, 1],
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Parent BPID'],
+                                 2: ['ACH CCN Associated with Initiating Claim'],
+                                 3: ['Clinical Episode Category'],
+                                 4: ['Meets Case Min Threshold (Y/N)'],
+                                 5: ['Total Potential Clinical Episode Count'],
+                                 6: ['Final Clinical Episode Count #'],
+                                 7: ['Final Clinical Episode Count %'],
+                                 8: ['Not FFS (Not A/B or C) #'],
+                                 9: ['Not FFS (Not A/B or C) %'],
+                                 10: ['End-Stage Renal Disease #'],
+                                 11: ['End-Stage Renal Disease %'],
+                                 12: ['Medicare Not Primary Payer #'],
+                                 13: ['Medicare Not Primary Payer %'],
+                                 14: ['Beneficiary Information Not Available #'],
+                                 15: ['Beneficiary Information Not Available %'],
+                                 16: ['Beneficiary Died During Anchor #'],
+                                 17: ['Beneficiary Died During Anchor %'],
+                                 18: ['Anchor Stay Length of Stay >59 Days #'],
+                                 19: ['Anchor Stay Length of Stay >59 Days %'],
+                                 20: ['Initiating OP Line is not Highest-Ranking J1 Line #'],
+                                 21: ['Initiating OP Line is not Highest-Ranking J1 Line %'],
+                                 22: ['Transfers to Excluded Hospitals #'],
+                                 23: ['Transfers to Excluded Hospitals %']},
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                 rn_dict['Total Potential Clinical Episode Count'],
+                                 rn_dict['Final Clinical Episode Count #'],
+                                 rn_dict['Final Clinical Episode Count %'],
+                                 rn_dict['Not FFS (Not A/B or C) #'],
+                                 rn_dict['Not FFS (Not A/B or C) %'],
+                                 rn_dict['End-Stage Renal Disease #'],
+                                 rn_dict['End-Stage Renal Disease %'],
+                                 rn_dict['Medicare Not Primary Payer #'],
+                                 rn_dict['Medicare Not Primary Payer %'],
+                                 rn_dict['Beneficiary Information Not Available #'],
+                                 rn_dict['Beneficiary Information Not Available %'],
+                                 rn_dict['Beneficiary Died During Anchor #'],
+                                 rn_dict['Beneficiary Died During Anchor %'],
+                                 rn_dict['Anchor Stay Length of Stay >59 Days #'],
+                                 rn_dict['Anchor Stay Length of Stay >59 Days %'],
+                                 rn_dict['Initiating OP Line is not Highest-Ranking J1 Line #'],
+                                 rn_dict['Initiating OP Line is not Highest-Ranking J1 Line %'],
+                                 rn_dict['Transfers to Excluded Hospitals #'],
+                                 rn_dict['Transfers to Excluded Hospitals %']],
+                    'percent_cols': [rn_dict['Final Clinical Episode Count %'],
+                                     rn_dict['Not FFS (Not A/B or C) %'],
+                                     rn_dict['End-Stage Renal Disease %'],
+                                     rn_dict['Medicare Not Primary Payer %'],
+                                     rn_dict['Beneficiary Information Not Available %'],
+                                     rn_dict['Beneficiary Died During Anchor %'],
+                                     rn_dict['Anchor Stay Length of Stay >59 Days %'],
+                                     rn_dict['Initiating OP Line is not Highest-Ranking J1 Line %'],
+                                     rn_dict['Transfers to Excluded Hospitals %']],
+                    'maxcols': 23},
+               'layout_1':
+                   {'sheet': 'Clinical_Episode_Exclusions',
+                    'skip': 5,
+                    'header_rows': [0, 1],
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Parent BPID'],
+                                 2: ['CCN'],
+                                 3: ['Clinical Episode Category'],
+                                 4: ['Meets Case Min Threshold (Y/N)'],
+                                 5: ['Total Potential Clinical Episode Count'],
+                                 6: ['Final Clinical Episode Count #'],
+                                 7: ['Final Clinical Episode Count %'],
+                                 8: ['Not FFS (Not A/B or C) #'],
+                                 9: ['Not FFS (Not A/B or C) %'],
+                                 10: ['End-Stage Renal Disease #'],
+                                 11: ['End-Stage Renal Disease %'],
+                                 12: ['Medicare Not Primary Payer #'],
+                                 13: ['Medicare Not Primary Payer %'],
+                                 14: ['Beneficiary Information Not Available #'],
+                                 15: ['Beneficiary Information Not Available %'],
+                                 16: ['Beneficiary Died During Anchor #'],
+                                 17: ['Beneficiary Died During Anchor %'],
+                                 18: ['Anchor Stay Length of Stay >59 Days #'],
+                                 19: ['Anchor Stay Length of Stay >59 Days %'],
+                                 20: ['Initiating OP Line is not Highest-Ranking J1 Line #'],
+                                 21: ['Initiating OP Line is not Highest-Ranking J1 Line %'],
+                                 22: ['Transfers to Excluded Hospitals #'],
+                                 23: ['Transfers to Excluded Hospitals %']},
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                 rn_dict['Total Potential Clinical Episode Count'],
+                                 rn_dict['Final Clinical Episode Count #'],
+                                 rn_dict['Final Clinical Episode Count %'],
+                                 rn_dict['Not FFS (Not A/B or C) #'],
+                                 rn_dict['Not FFS (Not A/B or C) %'],
+                                 rn_dict['End-Stage Renal Disease #'],
+                                 rn_dict['End-Stage Renal Disease %'],
+                                 rn_dict['Medicare Not Primary Payer #'],
+                                 rn_dict['Medicare Not Primary Payer %'],
+                                 rn_dict['Beneficiary Information Not Available #'],
+                                 rn_dict['Beneficiary Information Not Available %'],
+                                 rn_dict['Beneficiary Died During Anchor #'],
+                                 rn_dict['Beneficiary Died During Anchor %'],
+                                 rn_dict['Anchor Stay Length of Stay >59 Days #'],
+                                 rn_dict['Anchor Stay Length of Stay >59 Days %'],
+                                 rn_dict['Initiating OP Line is not Highest-Ranking J1 Line #'],
+                                 rn_dict['Initiating OP Line is not Highest-Ranking J1 Line %'],
+                                 rn_dict['Transfers to Excluded Hospitals #'],
+                                 rn_dict['Transfers to Excluded Hospitals %']],
+                    'percent_cols': [rn_dict['Final Clinical Episode Count %'],
+                                     rn_dict['Not FFS (Not A/B or C) %'],
+                                     rn_dict['End-Stage Renal Disease %'],
+                                     rn_dict['Medicare Not Primary Payer %'],
+                                     rn_dict['Beneficiary Information Not Available %'],
+                                     rn_dict['Beneficiary Died During Anchor %'],
+                                     rn_dict['Anchor Stay Length of Stay >59 Days %'],
+                                     rn_dict['Initiating OP Line is not Highest-Ranking J1 Line %'],
+                                     rn_dict['Transfers to Excluded Hospitals %']],
+                    'maxcols': 23},
+               'layout_2':
+                   {'sheet': 'Clinical_Episode_Exclusions',
+                    'skip': 5,
+                    'header_rows': [0, 1],
+                    'cms_cols': {0: ['Initial Sort Order'],
+                                 1: ['Episode Initiator BPID'],
+                                 2: ['CCN'],
+                                 3: ['Clinical Episode Category'],
+                                 4: ['Meets Case Min Threshold (Y/N)'],
+                                 5: ['Total Potential Clinical Episode Count'],
+                                 6: ['Final Clinical Episode Count #'],
+                                 7: ['Final Clinical Episode Count %'],
+                                 8: ['Not FFS (Not A/B or C) #'],
+                                 9: ['Not FFS (Not A/B or C) %'],
+                                 10: ['End-Stage Renal Disease #'],
+                                 11: ['End-Stage Renal Disease %'],
+                                 12: ['Medicare Not Primary Payer #'],
+                                 13: ['Medicare Not Primary Payer %'],
+                                 14: ['Beneficiary Information Not Available #'],
+                                 15: ['Beneficiary Information Not Available %'],
+                                 16: ['Beneficiary Died During Anchor #'],
+                                 17: ['Beneficiary Died During Anchor %'],
+                                 18: ['Anchor Stay Length of Stay >59 Days #'],
+                                 19: ['Anchor Stay Length of Stay >59 Days %'],
+                                 20: ['Initiating OP Line is not Highest-Ranking J1 Line #'],
+                                 21: ['Initiating OP Line is not Highest-Ranking J1 Line %'],
+                                 22: ['Transfers to Excluded Hospitals #'],
+                                 23: ['Transfers to Excluded Hospitals %']},
+                    'num_cols': [rn_dict['Initial Sort Order'],
+                                 rn_dict['Total Potential Clinical Episode Count'],
+                                 rn_dict['Final Clinical Episode Count #'],
+                                 rn_dict['Final Clinical Episode Count %'],
+                                 rn_dict['Not FFS (Not A/B or C) #'],
+                                 rn_dict['Not FFS (Not A/B or C) %'],
+                                 rn_dict['End-Stage Renal Disease #'],
+                                 rn_dict['End-Stage Renal Disease %'],
+                                 rn_dict['Medicare Not Primary Payer #'],
+                                 rn_dict['Medicare Not Primary Payer %'],
+                                 rn_dict['Beneficiary Information Not Available #'],
+                                 rn_dict['Beneficiary Information Not Available %'],
+                                 rn_dict['Beneficiary Died During Anchor #'],
+                                 rn_dict['Beneficiary Died During Anchor %'],
+                                 rn_dict['Anchor Stay Length of Stay >59 Days #'],
+                                 rn_dict['Anchor Stay Length of Stay >59 Days %'],
+                                 rn_dict['Initiating OP Line is not Highest-Ranking J1 Line #'],
+                                 rn_dict['Initiating OP Line is not Highest-Ranking J1 Line %'],
+                                 rn_dict['Transfers to Excluded Hospitals #'],
+                                 rn_dict['Transfers to Excluded Hospitals %']],
+                    'percent_cols': [rn_dict['Final Clinical Episode Count %'],
+                                     rn_dict['Not FFS (Not A/B or C) %'],
+                                     rn_dict['End-Stage Renal Disease %'],
+                                     rn_dict['Medicare Not Primary Payer %'],
+                                     rn_dict['Beneficiary Information Not Available %'],
+                                     rn_dict['Beneficiary Died During Anchor %'],
+                                     rn_dict['Anchor Stay Length of Stay >59 Days %'],
+                                     rn_dict['Initiating OP Line is not Highest-Ranking J1 Line %'],
+                                     rn_dict['Transfers to Excluded Hospitals %']],
+                    'maxcols': 23}}}
+
+def assert_nobs(df, wrkbook_path, sheet_name):
+    # Starting New Dictionaries
+    # -----------------------------
+    '''
+    break if number of observations is different from expectation
+    '''
+
+    n1 = int(np.max(df['init_sort_order']))
+    if np.isnan(n1):
+        n1=1
+    n2 = len(df)
+    if (n1 != n2):
+        raise Exception('Maximum value of column init_sort_order is {}, number of observations is '
+                        '{}. File {}, sheet {}'.format(n1, n2, wrkbook_path, sheet_name))
+def split_and_remove_extra_column_junk(df):
+    """
+
+    :type df: object
+    """
+    new_colnames = []
+    for col in df.columns:
+        print('\n' * 2)
+        print(col)
+        colname = ''
+        for el in col.split():
+            print(el, end=' ')
+            if not ((el.find('Unnamed:') >= 0) | (el.find('_level_') >= 0)):
+                print('add string to column label')
+                colname = colname + ' ' + el
+            else:
+                print('NOT adding string to column label')
+        new_colnames += [colname.strip()]
+        print(new_colnames)
+        #print(df)
+        # [er] replace loop below with a single rename of columns like so:
+    df.columns = new_colnames
+
+    return df
+
+def generic_cleanup(df):
+    no_comma_strip_cols = [rn_dict['Clinical Episode Category Description'],
+                           rn_dict['Parameter Description']]
+    df = df.copy()
+    if 'init_sort_order' in df.columns:
+        filter_col = 'init_sort_order'
+    else:
+        filter_col = df.columns[0]
+    msk = df[filter_col].str.lower().isin(['filter', 'end of worksheet'])
+    df = df.loc[~msk, :]
+
+    # properly encode missing values as such
+    for col in df.columns:
+        msk = df[col] == '.'
+        df.loc[msk, col] = np.nan
+        msk = df[col] == 'nan'
+        df.loc[msk, col] = np.nan
+
+        # Clean up some saucy characters
+        if col not in no_comma_strip_cols:
+            df[col] = df[col].replace('[?,/,\,$,%,*,@,#]', '', regex=True)
+
+    # get rid of completely blank rows
+    df = df.dropna(how='all')
+
+    return df
+
+def read_sheet(wrkbook_path, con, abrv_sheet, layout_type, excel=True):
+    # explicitiy define excel read arguments
+    col_dict = con[abrv_sheet][layout_type]['cms_cols']
+    sheet_name = con[abrv_sheet][layout_type]['sheet']
+    skip_row = con[abrv_sheet][layout_type]['skip']
+    usecol = con[abrv_sheet][layout_type]['maxcols']
+    header_row = con[abrv_sheet][layout_type]['header_rows']
+    num_col = con[abrv_sheet][layout_type]['num_cols']
+    percent_col = con[abrv_sheet][layout_type]['percent_cols']
+    chunk_of_dict = con[abrv_sheet][layout_type]
+
+    print(col_dict)
+    print(sheet_name)
+    print(skip_row)
+    print(usecol)
+    print(header_row)
+    print(num_col)
+    print(percent_col)
+    print(chunk_of_dict)
+    print(wrkbook_path)
+    # [er] we are expecting all inputs to be excel, get rid of .read_csv and condition
+    if excel:
+        print('+++++++++++++++++++++++++++++++++++++++')
+        df = pd.read_excel(wrkbook_path, sheet_name=sheet_name, skiprows=skip_row,
+                           usecols=usecol, dtype=str, header=header_row)
+        #df = pd.read_excel(r"Z:\bundle_selection\price_summary_scraping\dev\my3\v01\input_data\templates_test_data\sample_9_23_19\2019_09_09_3201-0000_Baseline_MY_3_Prelim_TP.xlsx", sheet_name='TP_Summary', skiprows=4,
+                           #usecols=8, dtype=str, header=0)
+        print('================================================')
+    else:
+        print('unexpected filetype')
+
+    if isinstance(header_row, list):  # flatten multiindex headers if necessary
+        df.insert(0, (tuple(df.columns.names)), df.index)  # hack to get around read_excel bug that loses first col
+        df.columns = [' '.join(filter(None, col)) for col in df.columns.values]
+
+    #split and remove unwanted hidden excel column names
+    df = split_and_remove_extra_column_junk(df)
+
+    #check that lenght of dict and # of cols is equal
+    print(len(df.columns))
+    print(len(col_dict))
+    print(wrkbook_path)
+    print(sheet_name)
+
+    #plus one, because df.columns does not capture initial_sort_order seen in config_dictionary
+    if len(df.columns) != len(col_dict):
+        print(df.columns)
+        print(col_dict)
+        raise AssertionError('number of columns not matching in sheet {}, workbook {}'.format(sheet_name, wrkbook_path))
+    for x in list(col_dict):
+        if col_dict[x] != [df.columns[x]]:
+            print(col_dict[x])
+            print([df.columns[x]])
+            raise AssertionError(
+                'Columns do not match in {sheetname} sheet for this file: '.format(sheetname=sheet_name) + wrkbook_path)
+
+    ##create cyfy column
+    cyfy = 'Preliminary Target Price in CY19/FY20 Real Dollars'
+    target_price_sheet_list = [['TP_Components','TP_Summary']]
+    for sheet_name in target_price_sheet_list:
+        if df.columns.str.contains(cyfy).any():
+            print('yes')
+            df['cy_fy'] = 'cy19fy20'
+        else:
+            AssertionError('Preliminary Target Price CY19/FY20 Real Dollars does not exist in the current data_frame, it is time to update!')
+
+
+    df.rename(columns=rn_dict, inplace=True) #rename columns
+
+    df = generic_cleanup(df) #clean
+
+    #print(df.columns) #print cleaned and renamed columns
+
+    # fix numeric and percent cols
+    if len(num_col) > 0:
+        for col in num_col:
+            df[col] = df[col].astype(float)
+            # raise ValueError('{col} contains non numeric values'.format(col=col))
+
+    if 'percent_cols' in chunk_of_dict:
+        for col in percent_col:
+            df[col] = df[col] / 100
+
+    # print(df.columns.dtypes())
+
+    if len(df) == 0:
+        df = pd.DataFrame(columns=list(df.columns.values) + ['source'], index=[0])
+
+    #splitpath = wrkbook_path.split('/')
+
+    #todo: clean up to match actual path need to trace back to orginal file from cms
+    df['source'] = wrkbook_path
+    assert_nobs(df, wrkbook_path, sheet_name)
+
+    return df
+
+def get_files_to_process(main_data_loc, paths):
+    excel_suffix_pattern='Baseline_MY_1_2_'
+    excel_files = []
+    root_dir = []
+    sub_dir = []
+    model_year = []
+    bpid = []
+    bpid_1st_half = []
+    bpid_2nd_half = []
+    new_loc = []
+    files = []
+
+    # r=root, d=directories, f = files
+    for path in paths:
+        for r, d, f in os.walk(path):
+            for file in f:
+                #todo: remove ~ from initial read
+                if ('.xlsx' in file) & ('~' not in file):
+                    files.append(os.path.join(r, file))
+
+    #todo: why do we have exceL-suffix_pattern cut?
+    files_list = files
+    y = [x for x in files_list]
+    for file in y:
+        if (file.split('.')[-1] in 'xlsx') & (file[31] != '~'):
+            excel_files.append(file)
+
+    t2 = [x.replace(excel_suffix_pattern,'') for x in files_list]
+
+    #meant to extract only xlsx files
+    for y in t2:
+        root_dir.append(main_data_loc)
+        sub_dir.append(y[20:30])
+        model_year.append(excel_suffix_pattern)
+        new_loc.append(main_out + '/' + 'data_sheet_scraping' + '/' +y[20:30] + '/' +'v01')
+        if 'National' in y:
+            m = re.search('National',y)
+        else:
+            m = re.search('\d{4}-\d{4}', y)
+        bpid.append(m.group(0))
+
+    for x in t2:
+        if 'National' in x:
+            m = re.search('National', x)
+            m = m.group(0)
+            n = re.search('ACH', x)
+            n = n.group(0)
+        else:
+            m = re.search('\d{4}-\d{4}', x)
+            n = re.search('\d{4}-\d{4}', x)
+            m = m.group(0).split('-')[0]
+            n = n.group(0).split('-')[1]
+        bpid_1st_half.append(m)
+        bpid_2nd_half.append(n)
+
+
+    #define workbook abrv sheet names for later use
+    national_target_price_sheets = 'nat_tp_sum,nat_tp_comp,risk_param'
+    target_price_sheets = 'tp_sum,tp_comp,risk_param,proxy_apc,peer_group,wins_val,update_factors'
+    summary_sheets = 'ep_spending,proxy_apc,update_factors,exclusions'
+
+
+    df_summary = pd.DataFrame({'root_dir':root_dir,
+                               'sub_dir':sub_dir,
+                               'model_year':model_year,
+                               'excel_files':excel_files,
+                               'bpid': bpid,
+                               'bpid_1st_half':bpid_1st_half,
+                               'bpid_2nd_half':bpid_2nd_half,
+                               'new_loc':new_loc
+                               })
+    df_summary['work_book_type'] = np.where(df_summary['excel_files'].str.contains('National', case=False)
+                                            ,'national_target_price',
+                                            (np.where(df_summary['excel_files'].str.contains('Summary', case=False)
+                                                      ,'summary','target_price')))
+
+    #df_summary['setting_type'] = np.where(df_summary['excel_file_cut'].str.contains('National', case=False),'national_ach',
+    #                                     (np.where(df_summary['excel_file_cut'].str.contains('ACH', case=False),'ACH',
+    #                                                (np.where(df_summary['excel_file_cut'].str.contains('_Convener_', case=False),'convener','PGP')))))
+
+    df_summary['partner_type'] = np.where(df_summary['bpid_2nd_half']=='0000','pgp_nonconvener',
+                                          np.where(df_summary['bpid_2nd_half']=='ACH','National',
+                                                   'convener'))
+
+    ccn_conveners_list = ['1476','1260','1029','2217']
+    msk = df_summary['bpid_1st_half'].isin(ccn_conveners_list)
+    df_summary.loc[msk, 'partner_type'] = 'ach_nonconvener'
+
+    msk = df_summary['work_book_type'] == 'summary'
+    msk_1 = df_summary['work_book_type'] == 'national_target_price'
+    df_summary['sheet_name'] = np.where(msk_1, str(national_target_price_sheets),
+                                        (np.where(msk,str(summary_sheets),
+                                                  str(target_price_sheets))))
+
+
+    df_summary['layout_type'] = np.where(df_summary['partner_type']=='pgp_nonconvener','layout_0',
+                                         (np.where(df_summary['partner_type']=='ach_nonconvener','layout_1',
+                                                   (np.where(df_summary['partner_type']=='convener', 'layout_2','layout_3')))))
+
+    #df_summary['new_loc'] = main_out + sub_dir
+
+
+
+    return df_summary
+
+# def write_sheet_level_outputs(df_summary_sheet,output_path):
+#     for index, row in df_summary_sheet.iterrows():
+#         print(row['excel_files'])
+#         print(row['layout_type'])
+#         print(row['bpid_1st_half'])
+#         con=config
+#         for sheet in row['sheet_name'].split(','):
+#             print(sheet)
+#             print(row['excel_files'])
+#             df_test = read_sheet(wrkbook_path=row['excel_files'],
+#                                  con=con,
+#                                  abrv_sheet=sheet.replace('national_',''),
+#                                  layout_type=row['layout_type'],
+#                                  excel=True)
+#             df_test.to_parquet('{}{}{}{}{}{}.parquet'.format(output_path,row['bpid_1st_half'],'-',row['bpid_2nd_half'],'_',sheet))
+
+def write_sheet_level_outputs_parallelization(list_of_inputs):
+    abrv_sheet = list_of_inputs[0]
+    path = list_of_inputs[1]
+    layout_type = list_of_inputs[2]
+    bpid_1st_half = list_of_inputs[3]
+    bpid_2nd_half = list_of_inputs[4]
+    output_path = list_of_inputs[5]
+    con =config
+    output_file_name = '{}/{}-{}_{}.parquet'.format(output_path,bpid_1st_half,bpid_2nd_half,abrv_sheet)
+
+    overwrite = True
+    if overwrite:
+        if os.path.isfile(output_file_name):
+            return None
+    #print(path)
+    df_test = read_sheet(wrkbook_path=path,
+                         con=con,
+                         abrv_sheet=abrv_sheet,
+                         layout_type=layout_type,
+                         excel=True)
+    df_test.to_parquet(output_file_name)
+
+def get_inputs(df_summary_sheet):
+    list_of_list_of_inputs = []
+    for index, row in df_summary_sheet.iterrows():
+        #print(row['excel_files'])
+        #print(row['excel_file_cut'])
+        #print(row['layout_type'])
+        con=config
+        for sheet in row['sheet_name'].split(','):
+            my_list = [[sheet,row.excel_files,row.layout_type,row.bpid_1st_half,row.bpid_2nd_half,row.new_loc]]
+            list_of_list_of_inputs += my_list
+            #print('process id:', os.getpid())
+            time.sleep(0)
+    return list_of_list_of_inputs
+
+def stack_files(write_out_path):
+
+    #for sheet in ['tp_comp']:
+    for sheet in sheet_types:
+        print(sheet)
+        # df = pd.DataFrame([])
+        list_of_dfs = []
+        #for index, row in df_summary_sheet.iterrows():
+        for index, row in df_summary_sheet.iterrows():
+            val = row['new_loc']
+
+            bpid = row['bpid_1st_half'] + '-' + \
+                   row['bpid_2nd_half']
+            sheets_in_wb = row['sheet_name']
+
+            if (val != 'not_used') & (sheet in sheets_in_wb):
+                path = '{}/{}_{}.parquet'.format(val, bpid, sheet)
+
+                if (os.path.isfile(path)):
+                    df_summary_sheet.loc[index, 'have_' + sheet] = 1
+
+            if (row['bpid_1st_half'] + '-' + row['bpid_2nd_half'] + '_' + sheet == 'National-ACH_tp_comp') | \
+                    (row['bpid_1st_half'] + '-' + row['bpid_2nd_half'] + '_' + sheet == 'National-ACH_tp_sum'):
+                continue
+            if sheet in row['sheet_name']:
+                y = pd.read_parquet(path)
+                list_of_dfs += [y]
+        df = pd.concat(list_of_dfs, axis=0)
+
+        msk = df.duplicated(['source', 'init_sort_order'], keep=False)
+        if msk.sum() > 0:
+            dups = df.loc[msk, :].sort_values(['source', 'init_sort_order'])
+            print(dups.head(15))
+            raise Exception(sheet + ': duplicates found by --source-- '
+                                    'and --init_sort_order--')
+
+        fname_pref = ''
+        if sheet in ['proxy_apc', 'risk_param','wins_val']:
+            fname_pref = 'initial_'
+
+        if sheet in ['update_factors']:
+            msk = df['baseline_year'] == 'All'
+            low_volume_df = df.loc[msk]
+            df = df.loc[~msk]
+            low_volume_df.to_parquet('{}_{}_{}.parquet'.format(write_out_path, "missing", sheet))
+            low_volume_df.to_csv('{}_{}_{}.csv'.format(write_out_path, "missing", sheet), index=False)
+
+        df.rename(columns={'bundle': 'cms_bundle_label'}, inplace=True)
+        if sheet in ['nat_tp_comp','nat_tp_sum','tp_comp',
+                     'tp_sum']:
+            df = df.loc[df['cms_bundle_label'] != 'All', :]
+        print(df.head(3))
+
+        if sheet in ['tp_changes', 'supp_tp_changes']:
+            df = df.loc[df['init_sort_order'].notnull(), :]
+
+        if sheet in ['tp_comp','tp_sum']:
+            #replace null trigger ccn values with imputed ccn's
+            df['trigger_ccn'] = np.where(df['trigger_ccn'].isnull(),
+                     df['ccn_tin'], df['trigger_ccn'])
+            #set trigger ccn to len 6
+            df['trigger_ccn'] = df['trigger_ccn'].astype(str).str.zfill(6)
+
+            #zfilling for ccn_tin
+            df['ccn_tin'] = np.where(df['ccn_tin'].str.len()==5,
+                                     df['ccn_tin'].astype(str).str.zfill(6),
+                                     np.where(df['ccn_tin'].str.len()>6,
+                                              df['ccn_tin'].astype(str).str.zfill(9),df['ccn_tin']))
+
+            df['pgp_ach'] = np.where(df['ccn_tin'].str.len()==6,
+                                     'ACH', np.where(df['ccn_tin'].str.len()==9,'PGP',
+                                                df['pgp_ach']))
+
+
+        if sheet in ['nat_tp_comp','nat_tp_sum']:
+            df['ccn_tin'] = np.where(df['ccn_tin'].str.len()==5,
+                                     df['ccn_tin'].astype(str).str.zfill(6),df['ccn_tin'])
+
+    # assign bundle identifier
+        if sheet not in ['proxy_apc','update_factors','peer_group']:
+            df = add_bundle_id_with_bundle_type(df,
+                                                'bundle_type',
+                                                'cms_bundle_label',
+                                                'bundle',
+                                                all_definitions_required=True)
+
+
+        #df.to_hdf('{}{}{}.hdf'.format(write_out_path, fname_pref, sheet), key="main")
+        df.to_parquet('{}{}{}.parquet'.format(write_out_path,fname_pref, sheet))
+        #df.to_csv('{}{}{}.csv'.format(write_out_path,fname_pref, sheet), index=False)
+        #df_summary_sheet.to_csv('{}{}.csv'.format(summary_sheet_path, "updated_summary_sheet"), index=False)
+
+
+def add_bundle_id_with_bundle_type(df, bundle_type='bundle_type',
+                                   cur_bundle_name='cms_bundle_label',
+                                   new_bundle_name='bundle',
+                                   all_definitions_required=True):
+    '''
+    :param df: dataframe to which to assign bundle id
+    :param bundle_type: name of column containing bundle type (currently ip/op)
+    :param cur_bundle_name: name of column containing CMS bundle label
+    :param new_bundle_name: name of new column
+    :param all_definitions_required (default=True): assert that all
+        observations get --new_bundle_name-- assignment
+    :return: df with --new_bundle_name-- added
+    '''
+
+    tmap=df[[cur_bundle_name, bundle_type]].drop_duplicates().copy()
+
+    tmap['ip_msk'] = tmap[bundle_type].str.lower() == 'ip'
+    tmap['op_msk'] = tmap[bundle_type].str.lower() == 'op'
+    kword_dict = {
+        'ip_ami': {
+            'in':['acute','myocardial','infarction']},
+        'ip_back_neck_no_spinal_fus': {
+            'in': ['back', 'neck','except','spinal','fusion']},
+        'op_back_neck_no_spinal_fus': {
+            'in': ['back', 'neck','except','spinal','fusion']},
+        'ip_cardiac_arrhythmia': {
+            'in':['cardiac','arrhythmia']},
+        'ip_cardiac_defib': {
+            'in': ['cardiac defibrillator']},
+        'op_cardiac_defib': {
+            'in': ['cardiac defibrillator']},
+        'ip_cardiac_valve':{
+            'in': ['cardiac','valve']},
+        'ip_cellulitis': {
+            'in': ['cellulitis']},
+        'ip_cervical_spinal_fus': {
+            'in': ['cervical','spinal','fusion'],
+            'out': ['(non-cervical)']},
+        'ip_copdba': {
+            'in': ['chronic','obstructive','pulmonary','disease','bronchitis','asthma']},
+        'ip_combined_spinal_fus':{
+            'in': ['combined','anterior','posterior','spinal','fusion']},
+        'ip_chf': {
+            'in': ['congestive','heart','failure']},
+        'ip_cabg':{
+            'in': ['coronary','artery','bypass','graft']},
+        'ip_liver': {
+            'in': ['disorders','liver','except','malignancy','cirrhosis','alcoholic','hepatitis']},
+        'ip_double_lower_joint':{
+            'in': ['double','joint','replacement','lower','extremity']},
+        'ip_hip_fracture': {
+            'in': ['fractures','femur','hip','femur']},
+        'ip_gi_hemorrhage': {
+            'in': ['gastrointestinal', 'hemorrhage']},
+        'ip_gi_obstruction':{
+            'in': ['gastrointestinal','obstruction']},
+        'ip_hip_femur_except_mj': {
+            'in': ['hip','femur','procedures','except','major','joint']},
+        'ip_lower_proc_no_hip_foot_femur': {
+            'in': ['lower','extremity','humerus','procedure','except','hip','foot','femur']},
+        'ip_major_bowel': {
+            'in': ['major','bowel','procedure']},
+        'ip_major_lower_joint': {
+            'in': ['major','joint','replacement','lower','extremity']},
+        'ip_major_upper_joint': {
+            'in': ['major', 'joint', 'replacement', 'upper', 'extremity']},
+        'ip_pacemaker': {
+            'in': ['pacemaker']},
+        'ip_pci': {
+            'in': ['percutaneous','coronary','intervention']},
+        'op_pci': {
+            'in': ['percutaneous', 'coronary', 'intervention']},
+        'ip_renal_failure':{
+            'in': ['renal','failure']},
+        'ip_sepsis': {
+            'in': ['sepsis']},
+        'ip_pneumonia': {
+            'in': ['simple','pneumonia','respiratory','infections']},
+        'ip_noncervical_spinal_fus': {
+            'in': ['spinal','fusion', '(non-cervical)']},
+        'ip_stroke': {
+            'in': ['stroke']},
+        'ip_uti': {
+            'in': ['urinary','tract','infection']}
+        }
+
+
+    tmap[new_bundle_name] = 'unknown'
+    tmap['cur_bundle_copy'] = tmap[cur_bundle_name]
+    tmap.loc[tmap['cur_bundle_copy'].isnull(), 'cur_bundle_copy'] = ' '
+    for b in list(kword_dict):
+        tmap['msk'] = True
+        for kw in kword_dict[b]['in']:
+            tmap['msk'] = (tmap['msk']) & \
+                          (tmap[cur_bundle_name].str.contains(kw, case=False)) & \
+                          (tmap[b[0:2].lower() + '_msk'])
+        if 'out' in kword_dict[b].keys():
+            for kw2 in kword_dict[b]['out']:
+                tmap['msk'] = tmap['msk'] & ~tmap['cur_bundle_copy'] \
+                    .str.contains(kw2, case=False)
+        msk2 = tmap['msk'] & (tmap[new_bundle_name] != 'unknown')
+        if msk2.sum() > 0:
+            print(tmap.loc[msk2, :])
+            raise Exception('definition for {} is trying to get set on the '
+                            'following observations, already '
+                            'with defined bundle id: '.format(b))
+
+        tmap.loc[tmap['msk'], new_bundle_name] = b
+    tmap.loc[tmap[cur_bundle_name].isin(['All']), new_bundle_name] = 'All'
+    tmap.drop(['ip_msk', 'op_msk', 'msk', 'cur_bundle_copy'], axis=1, inplace=True)
+
+    msk3 = tmap[new_bundle_name] == 'unknown'
+    if (msk3.sum() > 0) & (all_definitions_required):
+        print(tmap.loc[msk3, :])
+        raise Exception('Not able to assign bundle ids to all bundles')
+
+    df = fp.merge('m:1', df, tmap, on=[cur_bundle_name, bundle_type],
+                  how='inner', sets='both', noprint=True)
+    return df
+
+# def add_bundle_id_without_bundle_type(df, cur_bundle_name='cms_bundle_label',
+#                                       new_bundle_name='bundle',
+#                                       all_definitions_required=True):
+#     '''
+#     :param df: dataframe to which to assign bundle id
+#     :param bundle_type: name of column containing bundle type (currently ip/op)
+#     :param cur_bundle_name: name of column containing CMS bundle label
+#     :param new_bundle_name: name of new column
+#     :param all_definitions_required (default=True): assert that all
+#         observations get --new_bundle_name-- assignment
+#     :return: df with --new_bundle_name-- added
+#     '''
+#
+#     tmap=df[[cur_bundle_name]].drop_duplicates().copy()
+#     tmap=tmap.reset_index(drop=True)
+#     setting_type = []
+#     #for index, row in tmap.iterrows():
+#     #print(row[cur_bundle_name])
+#     #for row in tmap[cur_bundle_name]:
+#     #x = np.where(row[:2]=='op','op','ip')
+#     #setting_type.append(x)
+#     tmap['bundle_setting_type'] = tmap[cur_bundle_name].str[0:2].str.lower()
+#     assert tmap['bundle_setting_type'].isin(['op','ip','ms']).all()
+#     #tmap['bundle_setting_type'] = setting_type
+#     #tmap['bundle_setting_type'] = tmap['bundle_setting_type'].astype(str)
+#     tmap['ip_msk'] = tmap['bundle_setting_type'] == 'ip'
+#     tmap['op_msk'] = tmap['bundle_setting_type'] == 'op'
+#     tmap['ms_msk'] = tmap['bundle_setting_type'] == 'ms'
+#     print(tmap)
+#     kword_dict = {
+#         'BPCI-3-IP-BARIATRIC': {
+#             'in': ['ip-','bariatric', 'surgery']},
+#         'BPCI-3-IP-CARDIACVALVEREPLACEMENT': {
+#             'in': ['ip-','transcathether','aortic', 'valve','replacement'],
+#             'out': ['arrhythmia','defibrillator']},
+#         'BPCI-3-IP-IBD': {
+#             'in': ['ip-','inflammatory', 'bowel','disease'],
+#             'out':['chronic','obstructive','pulmonary','bronchitis','asthma']},
+#         'BPCI-3-IP-SEIZURES': {
+#             'in': ['ip-','seizures']},
+#         'BPCI-3-IP-SPINALFUSION': {
+#             'in': ['ip-','spinal', 'fusion'],
+#             'out': ['back', '&', 'and', 'neck', 'except']},
+#         'BPCI-3-OP-MAJORLOWERJOINT': {
+#             'in': ['op-','major', 'joint','replacement','of','the','lower','joint'],
+#             'out': ['ip-','upper']},
+#         'BPCI-3-IP-AMI': {
+#             'in': ['ip-','acute', 'myocardial','infarction']},
+#         'BPCI-3-IP-BACKNECKNONFUSION': {
+#             'in': ['ip-','back', 'neck', 'except','spinal','fusion'],
+#             'out':['op-']},
+#         'BPCI-3-OP-BACKNECKNONFUSION': {
+#             'in': ['op-','back', 'neck', 'except','spinal', 'fusion'],
+#             'out': ['ip-']},
+#         'BPCI-3-IP-CARDIACARRHYTHMIA': {
+#             'in': ['ip-','cardiac','arrhythmia']},
+#         'BPCI-3-IP-CARDIACDEFIBRILLATOR': {
+#             'in': ['ip-','cardiac', 'defibrillator']},
+#         'BPCI-3-OP-CARDIACDEFIBRILLATOR': {
+#             'in': ['op-','cardiac', 'defibrillator']},
+#         'BPCI-3-IP-CARDIACVALVE': {
+#             'in': ['ip-','cardiac', 'valve'],
+#             'out': ['endovascular', 'replacement']},
+#         'BPCI-3-IP-CELLULITIS': {
+#             'in': ['ip-','cellulitis']},
+#         'BPCI-3-IP-COPDBA': {
+#             'in': ['ip-','chronic', 'obstructive','pulmonary','disease','bronchitis','asthma']},
+#         'BPCI-3-IP-CHF': {
+#             'in': ['ip-','congestive', 'heart','failure']},
+#         'BPCI-3-IP-CABG': {
+#             'in': ['ip-','coronary', 'artery','bypass','graft']},
+#         'BPCI-3-IP-LIVER': {
+#             'in': ['ip-','disorders','liver','except','malignancy','cirrhosis','alcoholic','hepatitis']},
+#         'BPCI-3-IP-DOUBLELOWERJOINT': {
+#             'in': ['ip-','double', 'joint','replacement','lower','extremity']},
+#         'BPCI-3-IP-HIPFRACTURE': {
+#             'in': ['ip-','fractures','femur','hip','pelvis']},
+#         'BPCI-3-IP-GIHEMORRHAGE': {
+#             'in': ['ip-','gastrointestinal', 'hemorrhage']},
+#         'BPCI-3-IP-GIOBSTRUCTION': {
+#             'in': ['ip-','gastrointestinal', 'obstruction']},
+#         'BPCI-3-IP-HIPFEMUREXCEPTMJ': {
+#             'in': ['ip-','hip', 'femur','procedures','except','major','joint']},
+#         'BPCI-3-IP-LOWERPROCEXCEPT': {
+#             'in': ['ip-','lower', 'extremity', 'humerus', 'procedure', 'except', 'foot','femur']},
+#         'BPCI-3-IP-MAJORBOWEL': {
+#             'in': ['ip-','major', 'bowel', 'procedure']},
+#         'BPCI-3-IP-MAJORLOWERJOINT': {
+#             'in': ['ip-','major', 'joint', 'replacement', 'lower', 'extremity'],
+#             'out': ['op-']},
+#         'BPCI-3-IP-MAJORUPPERJOINT': {
+#             'in': ['ip-','major', 'joint', 'replacement', 'upper', 'extremity']},
+#         'BPCI-3-IP-PACEMAKER': {
+#             'in': ['ip-','pacemaker']},
+#         'BPCI-3-IP-PCI': {
+#             'in': ['ip-','percutaneous', 'coronary', 'intervention']},
+#         'BPCI-3-OP-PCI': {
+#             'in': ['op-','percutaneous', 'coronary', 'intervention']},
+#         'BPCI-3-IP-RENALFAILURE': {
+#             'in': ['ip-','renal', 'failure']},
+#         'BPCI-3-IP-PNEUMONIA': {
+#             'in': ['ip-','simple', 'pneumonia', 'respiratory','infections']},
+#         'BPCI-3-IP-STROKE': {
+#             'in': ['ip-','stroke']},
+#         'BPCI-3-IP-UTI': {
+#             'in': ['ip-','urinary', 'tract', 'infection']},
+#         'BPCI-3-IP-SEPSIS': {
+#             'in': ['ip-','sepsis']},
+#         'BPCI-3-MS-MAJORLOWERJOINT': {
+#             'in': ['ms-','major','joint','replacement','lower','extremity'],
+#             'out': ['op-','ip-']
+#         }
+#     }
+#
+#
+#     tmap[new_bundle_name] = 'unknown'
+#     tmap['cur_bundle_copy'] = tmap[cur_bundle_name]
+#     tmap.loc[tmap['cur_bundle_copy'].isnull(), 'cur_bundle_copy'] = ' '
+#     #for b in ['BPCI-3-IP-IBD']:
+#     for b in list(kword_dict):
+#         #print(b)
+#         tmap['msk'] = True
+#         for kw in kword_dict[b]['in']:
+#             print(kw)
+#             tmap['msk'] = (tmap['msk']) & \
+#                           (tmap[cur_bundle_name].str.contains(kw, case=False)) & \
+#                           (tmap[b[7:9].lower() + '_msk'])
+#             print(tmap['msk'])
+#         if 'out' in kword_dict[b].keys():
+#             for kw2 in kword_dict[b]['out']:
+#                 tmap['msk'] = tmap['msk'] & ~tmap['cur_bundle_copy'] \
+#                     .str.contains(kw2, case=False)
+#                 print(tmap['msk'])
+#         msk2 = tmap['msk'] & (tmap[new_bundle_name] != 'unknown')
+#         if msk2.sum() > 0:
+#             print(tmap.loc[msk2, :])
+#             raise Exception('definition for {} is trying to get set on the '
+#                             'following observations, already '
+#                             'with defined bundle id: '.format(b))
+#
+#         tmap.loc[tmap['msk'], new_bundle_name] = b
+#     tmap.loc[tmap[cur_bundle_name].isin(['All']), new_bundle_name] = 'All'
+#     tmap.drop(['ip_msk', 'op_msk', 'msk', 'cur_bundle_copy'], axis=1, inplace=True)
+#
+#     msk3 = tmap[new_bundle_name] == 'unknown'
+#     if (msk3.sum() > 0) & (all_definitions_required):
+#         print(tmap.loc[msk3, :])
+#         raise Exception('Not able to assign bundle ids to all bundles')
+#
+#     df = fp.merge('m:1', df, tmap, on=[cur_bundle_name],
+#                   how='inner', sets='both', noprint=True)
+#     return df
+
+def modify_proxy_apc(files_dir, deduped_dir):
+    '''
+    remove duplicates from the proxy_apc file
+    '''
+    proxy_apc = pd.read_parquet(files_dir + 'initial_proxy_apc.parquet')
+
+    group_cols = ['init_hcpcs', 'init_hcpcs_desc', 'baseline_year','source']
+    attributes_cols = ['proxy_apc_payment_rate']
+
+    check_unique_vals(proxy_apc, group_cols=group_cols,
+                      check_cols=attributes_cols, stop=True)
+
+    proxy_apc = proxy_apc[group_cols + attributes_cols].drop_duplicates()
+    assert proxy_apc.duplicated(group_cols).sum() == 0
+
+
+    proxy_apc.to_parquet('{}proxy_apc.parquet'.format(deduped_dir))
+    #proxy_apc.to_hdf('{}proxy_apc.h5'.format(deduped_dir), key='proxy_apc')
+    proxy_apc.to_csv('{}proxy_apc.csv'.format(deduped_dir))
+
+
+def modify_wins_bline(files_dir, deduped_dir):
+    '''
+    remove duplicates from the winsorization information files
+    '''
+    wins_val = pd.read_parquet(files_dir + 'initial_wins_val.parquet')
+
+    group_cols = ['bundle_type','bundle','cms_bundle_label', 'ms_drg_apc', 'baseline_year']
+    attributes_cols = ['1st_pct1', '99th_pct1']
+
+    check_unique_vals(wins_val, group_cols=group_cols,
+                      check_cols=attributes_cols, stop=True)
+
+    wins_val = wins_val[group_cols + attributes_cols].drop_duplicates()
+    assert wins_val.duplicated(group_cols).sum() == 0
+
+
+    wins_val.to_parquet('{}wins_val.parquet'.format(deduped_dir))
+    #wins_val.to_hdf('{}wins_val.h5'.format(deduped_dir), key='wins_val')
+    wins_val.to_csv('{}wins_val.csv'.format(deduped_dir))
+
+
+def modify_risk_params(files_dir, deduped_dir):
+
+    params = pd.read_parquet(files_dir + 'initial_risk_param.parquet')
+
+    group_cols = ['bundle','bundle_type','cms_bundle_label','reg_stage','param']
+    attributes_cols = ['param_desc', 'param_est']
+
+    check_unique_vals(params, group_cols=group_cols,
+                      check_cols=attributes_cols, stop=True)
+
+    params = params[group_cols + attributes_cols].drop_duplicates()
+    assert params.duplicated(group_cols).sum() == 0
+
+    params.to_parquet('{}risk_param.parquet'.format(deduped_dir))
+    #params.to_hdf('{}risk_param.h5'.format(deduped_dir), key='risk_param')
+    params.to_csv('{}risk_param.csv'.format(deduped_dir))
+
+
+def modify_peer_group(files_dir, deduped_dir):
+
+    peer_group = pd.read_parquet(files_dir + 'peer_group.parquet')
+
+    group_cols = ['bpid','ccn_tin']
+    attributes_cols = ['ac_med_cntr','urb_rur', 'safety_net','bed_size','census_div']
+
+    check_unique_vals(peer_group, group_cols=group_cols,
+                      check_cols=attributes_cols, stop=True)
+
+    peer_group = peer_group[group_cols + attributes_cols].drop_duplicates()
+    assert peer_group.duplicated(group_cols).sum() == 0
+
+    peer_group.to_parquet('{}peer_group.parquet'.format(deduped_dir))
+    #peer_group.to_hdf('{}peer_group.h5'.format(deduped_dir), key='peer_group')
+    peer_group.to_csv('{}peer_group.csv'.format(deduped_dir))
+
+
+# def compare_nat_to_stacked_files(left_frame,
+#                                  right_frame,
+#                                  condition_one,
+#                                  condition_two,
+#                                  out_path,
+#                                  sheet_name):
+#     frame_1 = pd.read_csv(left_frame)
+#     frame_2 = pd.read_csv(right_frame)
+#
+#     df = fp.merge('1:1',
+#                   frame_1,
+#                   frame_2,
+#                   on=[condition_one, condition_two],
+#                   how='outer',
+#                   suffixes=['_stack', '_nat'],
+#                   indicator=True,
+#                   noprint=True)
+#     #write out unmatched content
+#     df.to_csv('{}/{}.csv'.format(out_path,sheet_name))
+
+def reorder_column_order(file_to_read_in, reorder_list):
+    #todo: reorder_for peer_group
+    x = pd.read_parquet('{}{}.parquet'.format(reorder_dir,file_to_read_in))
+    x = x[reorder_list]
+    x.to_parquet('{}{}.parquet'.format(reorder_dir, file_to_read_in))
+    x.to_csv('{}{}.csv'.format(reorder_dir, file_to_read_in))
+    #x.to_hdf('{}{}.h5'.format(reorder_dir, file_to_read_in),key=sheet)
+
+#-------------------------------------------------------------
+if __name__ == '__main__':
+
+    ticktock = datetime.datetime.now().strftime('%m_%d_%Hh%Mm')
+
+    dated_dir = '2019_11_22'
+
+    main_out = 'Z:/bundle_selection/price_summary_scraping/dev/my1_2'
+
+    main_data_loc = 'Z:/raw-cms-delivery/'
+
+    main_raw = 'Z:/raw-cms-delivery/{}'.format(dated_dir)
+
+    sheet_level_dir = '{}/data_sheet_scraping/{}/v01/'.format(main_out,dated_dir)
+
+    stacked_dir = '{}/appended/{}/'.format(main_out,ticktock)
+
+    root_raw_cms = 'Z:/raw-cms-delivery/'
+
+    if not os.path.exists(stacked_dir):
+        os.makedirs(stacked_dir)
+
+    reorder_dir = stacked_dir
+
+    deduped_dir = stacked_dir
+
+    paths = ['Z:\\raw-cms-delivery\\2019_11_22',
+             'Z:\\raw-cms-delivery\\2019_12_04']
+
+    #create summary sheet from directory of files
+
+    df_summary_sheet = get_files_to_process(main_data_loc, paths)
+
+    #create variable list of lists for an input source for paralelization
+    list_of_list_of_inputs = get_inputs(df_summary_sheet)
+
+    #parallel processing toggle
+    parallel = True
+    if parallel:
+        pool = Pool(processes=16)
+        res = pool.map(write_sheet_level_outputs_parallelization, list_of_list_of_inputs)
+    else:
+        for input_list in list_of_list_of_inputs:
+            write_sheet_level_outputs_parallelization(list_of_inputs=input_list)
+
+
+    #name of sheets for master appending
+    sheet_types = ['risk_param','tp_comp','tp_sum','wins_val',
+                   'proxy_apc','update_factors','peer_group',
+                   'nat_tp_comp','nat_tp_sum']
+
+    #stack files according to sheet name
+    stack_files(write_out_path=stacked_dir)
+
+    #tp_comp_reorder
+    tp_comp_reorder_list = ['init_sort_order', 'bpid', 'pgp_ach', 'ccn_tin', 'trigger_ccn','bundle_type',
+                            'cms_bundle_label', 'bpid_trigger_ccn_base_epi_count', 'trigger_ccn_base_count_gt40',
+                            'std_dol_winz','dollar_amt','ach_eff','sbs', 'pcma','pat_factor','prel_hbp','pgp_eff',
+                            'pgp_offset_no_adj', 'pgp_offset_w_adj','pgp_ach_prel_pcma', 'rel_case_mix',
+                            'pgp_ach_bench_price', 'target_price','ratio_real_std_dollars', 'target_price_real_dollars',
+                            'cy_fy', 'bundle','source']
+
+
+    # nat_tp_comp_reorder_list = ['init_sort_order','bpid', 'ccn_tin','bundle_type','cms_bundle_label', 'bpid_trigger_ccn_base_epi_count',
+    #                             'trigger_ccn_base_count_gt40', 'obs_epi_cost', 'avg_obs_epi_cost', 'ach_hist_adj',
+    #                             'sbs', 'pcma', 'peer_group_hist_adj', 'peer_group_trend', 'hbp', 'target_price',
+    #                             'ratio_real_std_dollars', 'target_price_real_dollars', 'cy_fy', 'bundle', 'source']
+
+    tp_sum_reorder_list = ['init_sort_order', 'bpid', 'pgp_ach', 'ccn_tin', 'trigger_ccn', 'cms_bundle_label',
+                           'bpid_trigger_ccn_base_epi_count', 'trigger_ccn_base_count_gt40',
+                           'target_price_real_dollars', 'cy_fy', 'bundle','source']
+
+    # nat_tp_sum_reorder_list = ['init_sort_order', 'ccn_tin', 'cms_bundle_label', 'bpid_trigger_ccn_base_epi_count',
+    #                            'trigger_ccn_base_count_gt40', 'target_price_real_dollars', 'cy_fy', 'bundle', 'source']
+
+    # patient_chars_reorder_list = ['init_sort_order', 'bpid', 'ccn_tin', 'trigger_ccn', 'cms_bundle_label', 'param', 'param_desc',
+    #                               'bpid_trigger_ccn_base_epi_count', 'patient_char_ep_count','bundle', 'source']
+
+    peer_group_reorder_list = ['init_sort_order','bpid','ccn_tin','ac_med_cntr',
+                               'urb_rur','safety_net','bed_size','census_div','source']
+
+    risk_param_reorder_list = ['init_sort_order', 'bundle_type' ,'cms_bundle_label', 'reg_stage', 'param', 'param_desc',
+                               'param_est', 'bundle', 'source']
+
+    wins_val_reorder_list = ['init_sort_order', 'bundle_type', 'cms_bundle_label', 'ms_drg_apc', 'baseline_year', '1st_pct1',
+                             '99th_pct1', 'bundle', 'source']
+
+    ep_spending_reorder_list = ['init_sort_order', 'bpid', 'pgp_ach', 'ccn_tin', 'trigger_ccn', 'cms_bundle_label', 'service_type',
+                                'clin_epi_period', 'clin_epi_count', 'mean', 'stdv', 'min', '1st_pctl', '5th_pctl',
+                                '10th_pctl', '20th_pctl', '25th_pctl', '50th_pctl', '75th_pctl', '80th_pctl',
+                                '90th_pctl', '95th_pctl', '99th_pctl', 'max', 'bundle', 'source']
+    exclusions_reorder_list = ['init_sort_order', 'bpid', 'ccn_tin', 'trigger_ccn', 'cms_bundle_label', 'meets_case_min_thres', 'total_epi',
+                               'final_epi', 'final_epi_pct', 'not_ffs_epi', 'not_ffs_pct', 'esrd_epi', 'esrd_pct',
+                               'medicare_not_prim_epi', 'medicare_not_prim_pct', 'no_bene_info_epi', 'no_bene_info_pct',
+                               'bene_died_in_anchor_epi', 'bene_died_in_anchor_pct', 'anchor_grt_59_days_epi',
+                               'anchor_grt_59_days_pct', 'op_anchor_not_hightest_j1_epi',
+                               'op_anchor_not_hightest_j1_pct', 'transfers_to_excl_hosp_epi',
+                               'transfers_to_excl_hosp_pct', 'bundle', 'source']
+
+    proxy_apc_reorder_list = ['init_sort_order', 'init_hcpcs', 'init_hcpcs_desc', 'apc',
+                              'baseline_year', 'proxy_apc_payment_rate', 'source']
+
+    update_factors_reorder_list = ['init_sort_order', 'bpid', 'ccn_tin', 'trigger_ccn', 'baseline_year',
+                                   'ipps_update_factor', 'ipps_pct_non_initiating_pmt', 'irf_update_factor',
+                                   'irf_pct_non_initiating_pmt', 'snf_update_factor', 'snf_pct_non_initiating_pmt',
+                                   'pfs_update_factor', 'pfs_pct_non_initiating_pmt', 'hha_update_factor',
+                                   'hha_pct_non_initiating_pmt', 'other_update_factor', 'other_pct_non_initiating_pmt',
+                                   'overall_update_factor', 'source']
+
+
+
+
+    tp_comp=reorder_column_order(file_to_read_in=('tp_comp'),
+                                   reorder_list=tp_comp_reorder_list)
+
+    tp_sum = reorder_column_order(file_to_read_in=('tp_sum'),
+                                   reorder_list=tp_sum_reorder_list)
+
+    # nat_tp_comp=reorder_column_order(file_to_read_in=('nat_tp_comp'),
+    #                                reorder_list=nat_tp_comp_reorder_list)
+    #
+    # nat_tp_sum = reorder_column_order(file_to_read_in=('nat_tp_sum'),
+    #                                reorder_list=nat_tp_sum_reorder_list)
+    #
+    # patient_chars = reorder_column_order(file_to_read_in=('patient_chars'),
+    #                               reorder_list=patient_chars_reorder_list)
+
+    risk_param = reorder_column_order(file_to_read_in=('initial_risk_param'),
+                                         reorder_list=risk_param_reorder_list)
+
+    wins_val = reorder_column_order(file_to_read_in=('initial_wins_val'),
+                                      reorder_list=wins_val_reorder_list)
+
+    # ep_spending = reorder_column_order(file_to_read_in=('ep_spending'),
+    #                                   reorder_list=ep_spending_reorder_list)
+    #
+    # exclusions = reorder_column_order(file_to_read_in=('exclusions'),
+    #                                   reorder_list=exclusions_reorder_list)
+
+    proxy_apc = reorder_column_order(file_to_read_in=('initial_proxy_apc'),
+                                      reorder_list=proxy_apc_reorder_list)
+
+    update_factors = reorder_column_order(file_to_read_in=('update_factors'),
+                                      reorder_list=update_factors_reorder_list)
+
+    peer_group = reorder_column_order(file_to_read_in=('peer_group'),
+                                      reorder_list=peer_group_reorder_list)
+
+
+    modify_risk_params(stacked_dir, deduped_dir)
+    modify_proxy_apc(stacked_dir, deduped_dir)
+    modify_peer_group(stacked_dir, deduped_dir)
+    modify_wins_bline(stacked_dir, deduped_dir)
+
+
+
+
+
+
