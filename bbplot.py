@@ -19,14 +19,3 @@ df['wbc_grouping'] = np.where(msk, 'elevated', (np.where(msk_1, 'low', 'normal')
 df_cut = df[['wbc_grouping', 'wbc_count']].copy(deep=True)
 sns.boxplot(x='wbc_grouping', y='wbc_count', data=df_cut)
 
-
-wbc_count = df['wbc_count']
-blood_glucose = df['blood_glucose']
-wbc_grouping = df['wbc_grouping']
-
-
-cols = [wbc_count, blood_glucose]
-
-fig, ax = plt.subplots()
-ax.boxplot(cols)
-plt.show()
